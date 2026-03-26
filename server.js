@@ -18,7 +18,7 @@ const app = express();
 
 // ============== CORS CONFIGURATION ==============
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  origin: process.env.FRONTEND_URL || "https://blog3-jade.vercel.app/",
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"]
@@ -31,6 +31,10 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
   maxAge: "1d",
   etag: false
 }));
+
+app.use('/health', (req, res) => {
+  res.status(200).json({ message: "Server is healthy" });
+});
 
 // ============== AUTH ROUTES ==============
 app.use("/api", authRoutes);
