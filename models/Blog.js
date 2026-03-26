@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const { blogConn } = require("../config/db");
 
 const blogSchema = new mongoose.Schema(
   {
@@ -31,6 +30,6 @@ const blogSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const Blog = blogConn.model("Blog", blogSchema);
+const Blog = mongoose.model("Blog", blogSchema);
 
 module.exports = Blog;
