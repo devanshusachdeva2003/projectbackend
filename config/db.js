@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const userConn = mongoose.createConnection("mongodb://127.0.0.1:27017/contact");
-const blogConn = mongoose.createConnection("mongodb://127.0.0.1:27017/blogpost");
+const userConn = mongoose.connect(process.env.MONGO_URI)
+const blogConn = mongoose.connect(process.env.MONGO_URI)
 
 module.exports = { userConn, blogConn };
