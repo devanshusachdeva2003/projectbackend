@@ -32,16 +32,17 @@ exports.createBlog = async (req, res) => {
       topic,
       author: req.user.name,
       authorId: req.user.id,
-      coverImage: req.file ? `/uploads/${req.file.filename}` : "",
+      // ✅ Cloudinary URL
+      coverImage: req.file ? req.file.path : "",
     });
 
     await newBlog.save();
     res.json(newBlog);
   } catch (err) {
-    res.status(500).json({ message: "Failed to create blog" });
+    console.error(err); // 🔥 add this for debugging
+    res.status(500).json({ message: err.message });
   }
 };
-
 // UPDATE BLOG
 exports.updateBlog = async (req, res) => {
   try {
