@@ -39,18 +39,19 @@ exports.updateProfile = async (req, res) => {
     user.username = username || user.username;
     user.bio = bio || user.bio;
 
+    // ✅ Cloudinary image
     if (req.file) {
-      user.avatar = "/uploads/" + req.file.filename;
+      user.avatar = req.file.path;
     }
 
     await user.save();
 
     res.json(user);
   } catch (err) {
-    res.status(500).json({ message: "Profile update failed" });
+    console.error(err); // 🔥 add this for debugging
+    res.status(500).json({ message: err.message });
   }
 };
-
 // CHANGE PASSWORD
 exports.changePassword = async (req, res) => {
   try {
