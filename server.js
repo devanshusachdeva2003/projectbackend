@@ -18,7 +18,7 @@ const app = express();
 
 // ============== CORS CONFIGURATION ==============
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "https://blog3-jade.vercel.app/",
+  origin: true,
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"]
@@ -59,7 +59,7 @@ app.use((err, req, res, next) => {
 });
 
 // ============== SERVER START ==============
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
 });
