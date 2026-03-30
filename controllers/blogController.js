@@ -1,8 +1,9 @@
 import Blog from "../models/Blog.js";
 import Notification from "../models/Notification.js";
 import User from "../models/User.js";
+
 // GET ALL BLOGS
-exports.getAllBlogs = async (req, res) => {
+export const getAllBlogs = async (req, res) => {
   try {
     const posts = await Blog.find().sort({ createdAt: -1 });
     res.json(posts);
@@ -12,7 +13,7 @@ exports.getAllBlogs = async (req, res) => {
 };
 
 // GET SINGLE BLOG
-exports.getBlogById = async (req, res) => {
+export const getBlogById = async (req, res) => {
   try {
     const post = await Blog.findById(req.params.id);
     if (!post) return res.status(404).json({ message: "Blog not found" });
@@ -21,6 +22,8 @@ exports.getBlogById = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch blog" });
   }
 };
+
+// GET BLOGS (ROLE BASED)
 export const getBlogs = async (req, res) => {
   try {
     let blogs;
@@ -36,8 +39,9 @@ export const getBlogs = async (req, res) => {
     res.status(500).json({ message: "Error fetching blogs" });
   }
 };
+
 // CREATE BLOG
-exports.createBlog = async (req, res) => {
+export const createBlog = async (req, res) => {
   try {
     const { title, content, topic } = req.body;
 
@@ -47,19 +51,19 @@ exports.createBlog = async (req, res) => {
       topic,
       author: req.user.name,
       authorId: req.user.id,
-      // ✅ Cloudinary URL
-      coverImage: req.file ? req.file.path : "",
+      coverImage: req.file ? req.file.path : "", // ✅ Cloudinary
     });
 
     await newBlog.save();
     res.json(newBlog);
   } catch (err) {
-    console.error(err); // 🔥 add this for debugging
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 };
+
 // UPDATE BLOG
-exports.updateBlog = async (req, res) => {
+export const updateBlog = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ message: "Not found" });
@@ -74,9 +78,10 @@ exports.updateBlog = async (req, res) => {
     blog.content = req.body.content;
     blog.topic = req.body.topic;
 
-  if (req.file) {
-  blog.coverImage = req.file.path; // ✅ FIXED
-}
+    // ✅ FIXED (Cloudinary)
+    if (req.file) {
+      blog.coverImage = req.file.path;
+    }
 
     await blog.save();
     res.json(blog);
@@ -86,7 +91,7 @@ exports.updateBlog = async (req, res) => {
 };
 
 // DELETE BLOG
-exports.deleteBlog = async (req, res) => {
+export const deleteBlog = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ message: "Not found" });
@@ -105,7 +110,7 @@ exports.deleteBlog = async (req, res) => {
 };
 
 // LIKE BLOG
-exports.likeBlog = async (req, res) => {
+export const likeBlog = async (req, res) => {
   try {
     const post = await Blog.findById(req.params.id);
     const userId = req.user.id;
@@ -126,7 +131,7 @@ exports.likeBlog = async (req, res) => {
 };
 
 // SAVE/UNSAVE BLOG
-exports.saveBlog = async (req, res) => {
+export const saveBlog = async (req, res) => {
   try {
     const post = await Blog.findById(req.params.id);
 
@@ -156,7 +161,7 @@ exports.saveBlog = async (req, res) => {
 };
 
 // GET SAVED POSTS
-exports.getSavedPosts = async (req, res) => {
+export const getSavedPosts = async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -171,7 +176,7 @@ exports.getSavedPosts = async (req, res) => {
 };
 
 // ADD COMMENT
-exports.addComment = async (req, res) => {
+export const addComment = async (req, res) => {
   try {
     const post = await Blog.findById(req.params.id);
 
@@ -189,7 +194,7 @@ exports.addComment = async (req, res) => {
 };
 
 // DELETE COMMENT
-exports.deleteComment = async (req, res) => {
+export const deleteComment = async (req, res) => {
   try {
     const post = await Blog.findById(req.params.postId);
     const comment = post.comments.id(req.params.commentId);
