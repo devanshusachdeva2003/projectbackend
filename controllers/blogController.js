@@ -1,9 +1,9 @@
-import Blog from "../models/Blog.js";
-import Notification from "../models/Notification.js";
-import User from "../models/User.js";
+const Blog = require("../models/Blog");
+const Notification = require("../models/Notification");
+const User = require("../models/User");
 
 // GET ALL BLOGS
-export const getAllBlogs = async (req, res) => {
+exports.getAllBlogs = async (req, res) => {
   try {
     const posts = await Blog.find().sort({ createdAt: -1 });
     res.json(posts);
@@ -13,7 +13,7 @@ export const getAllBlogs = async (req, res) => {
 };
 
 // GET SINGLE BLOG
-export const getBlogById = async (req, res) => {
+exports.getBlogById = async (req, res) => {
   try {
     const post = await Blog.findById(req.params.id);
     if (!post) return res.status(404).json({ message: "Blog not found" });
@@ -24,14 +24,14 @@ export const getBlogById = async (req, res) => {
 };
 
 // GET BLOGS (ROLE BASED)
-export const getBlogs = async (req, res) => {
+exports.getBlogs = async (req, res) => {
   try {
     let blogs;
 
     if (req.user.role === "admin") {
-      blogs = await Blog.find().populate("author", "username");
+      blogs = await Blog.find().sort({ createdAt: -1 });
     } else {
-      blogs = await Blog.find({ author: req.user.id });
+      blogs = await Blog.find({ authorId: req.user.id }).sort({ createdAt: -1 });
     }
 
     res.json(blogs);
@@ -41,7 +41,7 @@ export const getBlogs = async (req, res) => {
 };
 
 // CREATE BLOG
-export const createBlog = async (req, res) => {
+exports.createBlog = async (req, res) => {
   try {
     const { title, content, topic } = req.body;
 
@@ -51,10 +51,21 @@ export const createBlog = async (req, res) => {
       topic,
       author: req.user.name,
       authorId: req.user.id,
-      coverImage: req.file ? req.file.path : "", // ✅ Cloudinary
+      coverImage: req.file ? req.file.path : "",
     });
 
     await newBlog.save();
+
+    // 🔔 Notify admins
+    const admins = await User.find({ role: "admin" });
+
+    for (let admin of admins) {
+      await Notification.create({
+        user: admin._id,
+        message: `${req.user.name} created a new blog`,
+      });
+    }
+
     res.json(newBlog);
   } catch (err) {
     console.error(err);
@@ -63,7 +74,7 @@ export const createBlog = async (req, res) => {
 };
 
 // UPDATE BLOG
-export const updateBlog = async (req, res) => {
+exports.updateBlog = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ message: "Not found" });
@@ -78,7 +89,6 @@ export const updateBlog = async (req, res) => {
     blog.content = req.body.content;
     blog.topic = req.body.topic;
 
-    // ✅ FIXED (Cloudinary)
     if (req.file) {
       blog.coverImage = req.file.path;
     }
@@ -91,7 +101,7 @@ export const updateBlog = async (req, res) => {
 };
 
 // DELETE BLOG
-export const deleteBlog = async (req, res) => {
+exports.deleteBlog = async (req, res) => {
   try {
     const blog = await Blog.findById(req.params.id);
     if (!blog) return res.status(404).json({ message: "Not found" });
@@ -103,6 +113,15 @@ export const deleteBlog = async (req, res) => {
     }
 
     await blog.deleteOne();
+
+    // 🔔 Optional: notify owner if admin deletes
+    if (req.user.role === "admin") {
+      await Notification.create({
+        user: blog.authorId,
+        message: "Your blog was deleted by admin",
+      });
+    }
+
     res.json({ message: "Deleted" });
   } catch (err) {
     res.status(500).json({ message: "Failed to delete blog" });
@@ -110,7 +129,7 @@ export const deleteBlog = async (req, res) => {
 };
 
 // LIKE BLOG
-export const likeBlog = async (req, res) => {
+exports.likeBlog = async (req, res) => {
   try {
     const post = await Blog.findById(req.params.id);
     const userId = req.user.id;
@@ -121,6 +140,14 @@ export const likeBlog = async (req, res) => {
       post.likes = post.likes.filter((id) => id.toString() !== userId);
     } else {
       post.likes.push(userId);
+
+      // 🔔 Notify owner
+      if (post.authorId.toString() !== userId) {
+        await Notification.create({
+          user: post.authorId,
+          message: `${req.user.username} liked your blog`,
+        });
+      }
     }
 
     await post.save();
@@ -131,7 +158,7 @@ export const likeBlog = async (req, res) => {
 };
 
 // SAVE/UNSAVE BLOG
-export const saveBlog = async (req, res) => {
+exports.saveBlog = async (req, res) => {
   try {
     const post = await Blog.findById(req.params.id);
 
@@ -161,7 +188,7 @@ export const saveBlog = async (req, res) => {
 };
 
 // GET SAVED POSTS
-export const getSavedPosts = async (req, res) => {
+exports.getSavedPosts = async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -176,7 +203,7 @@ export const getSavedPosts = async (req, res) => {
 };
 
 // ADD COMMENT
-export const addComment = async (req, res) => {
+exports.addComment = async (req, res) => {
   try {
     const post = await Blog.findById(req.params.id);
 
@@ -187,6 +214,15 @@ export const addComment = async (req, res) => {
     });
 
     await post.save();
+
+    // 🔔 Notify owner
+    if (post.authorId.toString() !== req.user.id) {
+      await Notification.create({
+        user: post.authorId,
+        message: `${req.user.username} commented on your blog`,
+      });
+    }
+
     res.json(post.comments);
   } catch (err) {
     res.status(500).json({ message: "Failed to add comment" });
@@ -194,7 +230,7 @@ export const addComment = async (req, res) => {
 };
 
 // DELETE COMMENT
-export const deleteComment = async (req, res) => {
+exports.deleteComment = async (req, res) => {
   try {
     const post = await Blog.findById(req.params.postId);
     const comment = post.comments.id(req.params.commentId);
