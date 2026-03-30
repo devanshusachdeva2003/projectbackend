@@ -1,5 +1,6 @@
-const Blog = require("../models/Blog");
-
+import Blog from "../models/Blog.js";
+import Notification from "../models/Notification.js";
+import User from "../models/User.js";
 // GET ALL BLOGS
 exports.getAllBlogs = async (req, res) => {
   try {
@@ -20,7 +21,21 @@ exports.getBlogById = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch blog" });
   }
 };
+export const getBlogs = async (req, res) => {
+  try {
+    let blogs;
 
+    if (req.user.role === "admin") {
+      blogs = await Blog.find().populate("author", "username");
+    } else {
+      blogs = await Blog.find({ author: req.user.id });
+    }
+
+    res.json(blogs);
+  } catch (err) {
+    res.status(500).json({ message: "Error fetching blogs" });
+  }
+};
 // CREATE BLOG
 exports.createBlog = async (req, res) => {
   try {
@@ -59,9 +74,9 @@ exports.updateBlog = async (req, res) => {
     blog.content = req.body.content;
     blog.topic = req.body.topic;
 
-    if (req.file) {
-      blog.coverImage = `/uploads/${req.file.filename}`;
-    }
+  if (req.file) {
+  blog.coverImage = req.file.path; // ✅ FIXED
+}
 
     await blog.save();
     res.json(blog);
