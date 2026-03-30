@@ -9,6 +9,7 @@ const authRoutes = require("./routes/authRoutes");
 const blogRoutes = require("./routes/blogRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const userRoutes = require("./routes/userRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 
 // ============== MIDDLEWARE ==============
 const auth = require("./middleware/auth");
@@ -47,6 +48,9 @@ app.use("/api/profile", profileRoutes);
 
 // ============== ADMIN ROUTES ==============
 app.use("/api/users", userRoutes);
+
+// ============== NOTIFICATION ROUTES ==============
+app.use("/api/notifications", notificationRoutes);
 
 // ============== 404 ERROR ==============
 app.use((req, res) => {

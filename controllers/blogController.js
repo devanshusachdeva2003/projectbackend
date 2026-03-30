@@ -62,7 +62,10 @@ exports.createBlog = async (req, res) => {
     for (let admin of admins) {
       await Notification.create({
         user: admin._id,
+        sender: req.user.id,
         message: `${req.user.name} created a new blog`,
+        type: "blog",
+        blog: newBlog._id,
       });
     }
 
@@ -145,7 +148,10 @@ exports.likeBlog = async (req, res) => {
       if (post.authorId.toString() !== userId) {
         await Notification.create({
           user: post.authorId,
+          sender: userId,
           message: `${req.user.username} liked your blog`,
+          type: "like",
+          blog: post._id,
         });
       }
     }
@@ -219,7 +225,10 @@ exports.addComment = async (req, res) => {
     if (post.authorId.toString() !== req.user.id) {
       await Notification.create({
         user: post.authorId,
+        sender: req.user.id,
         message: `${req.user.username} commented on your blog`,
+        type: "comment",
+        blog: post._id,
       });
     }
 
