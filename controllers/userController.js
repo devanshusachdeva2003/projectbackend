@@ -94,7 +94,19 @@ exports.changeUserRole = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json({ message: "Role updated", user });
+    // If changing the current user's role, include logout flag
+    const isCurrentUser = req.user.id === req.params.id;
+    const response = {
+      message: "Role updated",
+      user,
+      requireLogout: isCurrentUser,
+    };
+
+    if (isCurrentUser) {
+      response.message = "Role updated. Please log in again to continue.";
+    }
+
+    res.json(response);
   } catch (err) {
     res.status(500).json({ message: "Role update failed" });
   }
