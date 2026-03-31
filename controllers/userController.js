@@ -74,6 +74,54 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ message: "Delete failed" });
   }
 };
+// controllers/userController.js
+
+exports.followUser = async (req, res) => {
+  try {
+    const { currentUser, targetUser } = req;
+
+    // ✅ Add follow
+    currentUser.following.push(targetUser._id);
+    targetUser.followers.push(currentUser._id);
+
+    await currentUser.save();
+    await targetUser.save();
+
+    res.json({
+      message: "Followed successfully",
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
+
+exports.unfollowUser = async (req, res) => {
+  try {
+    const { currentUser, targetUser } = req;
+
+    // ✅ Remove follow
+    currentUser.following = currentUser.following.filter(
+      (id) => id.toString() !== targetUser._id.toString()
+    );
+
+    targetUser.followers = targetUser.followers.filter(
+      (id) => id.toString() !== currentUser._id.toString()
+    );
+
+    await currentUser.save();
+    await targetUser.save();
+
+    res.json({
+      message: "Unfollowed successfully",
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+};
 
 // CHANGE USER ROLE
 exports.changeUserRole = async (req, res) => {

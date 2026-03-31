@@ -1,13 +1,35 @@
 const express = require("express");
 const auth = require("../middleware/auth");
 const isAdmin = require("../middleware/isAdmin");
+
+const {
+  validateFollow,
+} = require("../middleware/followValidation");
+
+const {
+  validateUnfollow,
+} = require("../middleware/unfollowValidation");
+
 const userController = require("../controllers/userController");
 
 const router = express.Router();
 
+// 🔐 ADMIN
 router.get("/", auth, isAdmin, userController.getAllUsers);
-router.post("/", auth, isAdmin, userController.createUser);
-router.delete("/:id", auth, isAdmin, userController.deleteUser);
-router.put("/:id/role", auth, isAdmin, userController.changeUserRole);
+
+// 🔥 FOLLOW SYSTEM
+router.post(
+  "/follow/:id",
+  auth,
+  validateFollow,
+  userController.followUser
+);
+
+router.post(
+  "/unfollow/:id",
+  auth,
+  validateUnfollow,
+  userController.unfollowUser
+);
 
 module.exports = router;
