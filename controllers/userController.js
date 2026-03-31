@@ -123,6 +123,26 @@ exports.unfollowUser = async (req, res) => {
   }
 };
 
+// GET USER PROFILE
+exports.getUserProfile = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const user = await User.findById(userId)
+      .select("-password")
+      .populate("followers", "name username avatar")
+      .populate("following", "name username avatar");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch user profile" });
+  }
+};
+
 // CHANGE USER ROLE
 exports.changeUserRole = async (req, res) => {
   try {
