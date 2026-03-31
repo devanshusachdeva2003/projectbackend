@@ -4,11 +4,11 @@ const isAdmin = require("../middleware/isAdmin");
 
 const {
   validateFollow,
-} = require("../middleware/followValidation");
+} = require("../middleware/followvalidator");
 
 const {
   validateUnfollow,
-} = require("../middleware/unfollowValidation");
+} = require("../middleware/unfollowvalidator");
 
 const userController = require("../controllers/userController");
 
