@@ -38,7 +38,7 @@ app.use('/health', (req, res) => {
 });
 
 // ============== AUTH ROUTES ==============
-app.use("/api/auth", authRoutes);
+app.use("/api", authRoutes);
 
 // ============== BLOG ROUTES ==============
 app.use("/api/blog", blogRoutes);
