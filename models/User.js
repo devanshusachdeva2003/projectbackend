@@ -6,27 +6,52 @@ const userSchema = new mongoose.Schema({
   username: String,
   email: String,
   password: String,
+
+  // 🔐 SECURITY QUESTION FEATURE
+  securityQuestion: {
+    type: String,
+    default: null,
+  },
+  securityAnswer: {
+    type: String,
+    default: null,
+  },
+
   avatar: {
     type: String,
-    default: null
+    default: null,
   },
+
   bio: String,
-  role: { type: String, default: "user" },
-  followers: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
-  }],
-  following: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User"
-  }],
+
+  role: {
+    type: String,
+    default: "user",
+  },
+
+  followers: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
+
+  following: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+  ],
+
   createdAt: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
-const User = mongoose.model("User", userSchema);
+// ✅ (optional but recommended)
+userSchema.index({ email: 1 }, { unique: true });
 
+const User = mongoose.model("User", userSchema);
 
 module.exports = User;
