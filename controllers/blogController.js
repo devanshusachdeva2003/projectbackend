@@ -5,7 +5,7 @@ const User = require("../models/User");
 // GET ALL BLOGS
 exports.getAllBlogs = async (req, res) => {
   try {
-    const posts = await Blog.find().sort({ createdAt: -1 });
+    const posts = await Blog.find({ isPublished: true }).sort({ createdAt: -1 });
     res.json(posts);
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch blogs" });
@@ -15,7 +15,10 @@ exports.getAllBlogs = async (req, res) => {
 // GET SINGLE BLOG
 exports.getBlogById = async (req, res) => {
   try {
-    const post = await Blog.findById(req.params.id);
+    const post = await Blog.findOne({
+  _id: req.params.id,
+  isPublished: true,
+});
     if (!post) return res.status(404).json({ message: "Blog not found" });
     res.json(post);
   } catch (err) {
@@ -43,7 +46,29 @@ exports.getBlogs = async (req, res) => {
 // CREATE BLOG
 exports.createBlog = async (req, res) => {
   try {
-    const { title, content, topic } = req.body;
+    const { title, content, topic, scheduledAt } = req.body;
+
+    // 🔥 Decide publish type & validate scheduledAt
+    let isPublished = true;
+    let parsedScheduledAt = null;
+
+    if (scheduledAt) {
+      // Convert string to Date object
+      const scheduledDate = new Date(scheduledAt);
+      
+      // Validate date
+      if (isNaN(scheduledDate.getTime())) {
+        return res.status(400).json({ message: "Invalid scheduled date. Please provide a valid date and time." });
+      }
+      
+      const now = new Date();
+      if (scheduledDate <= now) {
+        return res.status(400).json({ message: "Scheduled date must be in the future." });
+      }
+      
+      parsedScheduledAt = scheduledDate;
+      isPublished = false;
+    }
 
     const newBlog = new Blog({
       title,
@@ -52,6 +77,8 @@ exports.createBlog = async (req, res) => {
       author: req.user.name,
       authorId: req.user.id,
       coverImage: req.file ? req.file.path : "",
+      scheduledAt: parsedScheduledAt,
+      isPublished,
     });
 
     await newBlog.save();
@@ -91,6 +118,27 @@ exports.updateBlog = async (req, res) => {
     blog.title = req.body.title;
     blog.content = req.body.content;
     blog.topic = req.body.topic;
+
+    // ✅ Handle scheduled date updates
+    if (req.body.scheduledAt) {
+      const scheduledDate = new Date(req.body.scheduledAt);
+      
+      if (isNaN(scheduledDate.getTime())) {
+        return res.status(400).json({ message: "Invalid scheduled date." });
+      }
+      
+      const now = new Date();
+      if (scheduledDate <= now) {
+        return res.status(400).json({ message: "Scheduled date must be in the future." });
+      }
+      
+      blog.scheduledAt = scheduledDate;
+      blog.isPublished = false;
+    } else if (req.body.scheduledAt === "") {
+      // Clear schedule if empty string is passed
+      blog.scheduledAt = null;
+      blog.isPublished = true;
+    }
 
     if (req.file) {
       blog.coverImage = req.file.path;
@@ -198,10 +246,10 @@ exports.getSavedPosts = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const savedPosts = await Blog.find({
-      saves: { $in: [userId] },
-    }).sort({ createdAt: -1 });
-
+   const savedPosts = await Blog.find({
+  saves: { $in: [userId] },
+  isPublished: true,
+}).sort({ createdAt: -1 });
     res.json(savedPosts);
   } catch (err) {
     res.status(500).json({ message: "Error fetching saved posts" });

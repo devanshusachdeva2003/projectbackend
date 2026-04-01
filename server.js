@@ -4,6 +4,10 @@ const cors = require("cors");
 const path = require("path");
 require("dotenv").config();
 
+// 🔥 ADD THESE
+const cron = require("node-cron");
+const Blog = require("./models/Blog");
+
 // ============== ROUTES ==============
 const authRoutes = require("./routes/authRoutes");
 const blogRoutes = require("./routes/blogRoutes");
@@ -33,24 +37,37 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads"), {
   etag: false
 }));
 
+// ============== HEALTH CHECK ==============
 app.use('/health', (req, res) => {
   res.status(200).json({ message: "Server is healthy" });
 });
 
-// ============== AUTH ROUTES ==============
+// ============== ROUTES ==============
 app.use("/api", authRoutes);
-
-// ============== BLOG ROUTES ==============
 app.use("/api/blog", blogRoutes);
-
-// ============== PROFILE ROUTES ==============
 app.use("/api/profile", profileRoutes);
-
-// ============== ADMIN ROUTES ==============
 app.use("/api/users", userRoutes);
-
-// ============== NOTIFICATION ROUTES ==============
 app.use("/api/notifications", notificationRoutes);
+
+// ============== 🔥 CRON JOB (AUTO PUBLISH) ==============
+cron.schedule("* * * * *", async () => {
+  try {
+    const now = new Date();
+
+    const posts = await Blog.find({
+      isPublished: false,
+      scheduledAt: { $lte: now },
+    });
+
+    for (let post of posts) {
+      post.isPublished = true;
+      await post.save();
+      console.log("✅ Auto Published:", post.title);
+    }
+  } catch (err) {
+    console.log("❌ Cron error:", err.message);
+  }
+});
 
 // ============== 404 ERROR ==============
 app.use((req, res) => {
@@ -63,7 +80,8 @@ app.use((err, req, res, next) => {
 });
 
 // ============== SERVER START ==============
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 5000;
+
 app.listen(PORT, () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
 });

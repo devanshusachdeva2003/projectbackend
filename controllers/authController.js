@@ -5,18 +5,19 @@ const User = require("../models/User");
 // ================= REGISTER =================
 exports.register = async (req, res) => {
   try {
-    const { name, username, email, password, securityQuestion, securityAnswer } = req.body;
+    const {
+      name,
+      username,
+      email,
+      password,
+      securityQuestion,
+      securityAnswer,
+    } = req.body;
 
     const exist = await User.findOne({ $or: [{ email }, { username }] });
     if (exist) return res.status(400).json({ message: "User exists" });
 
     const hash = await bcrypt.hash(password, 10);
-
-    // 🔐 hash security answer
-    const hashedAnswer = await bcrypt.hash(
-      securityAnswer.toLowerCase(),
-      10
-    );
 
     const user = new User({
       name,
@@ -24,7 +25,7 @@ exports.register = async (req, res) => {
       email,
       password: hash,
       securityQuestion,
-      securityAnswer: hashedAnswer,
+      securityAnswer,
     });
 
     await user.save();
@@ -34,7 +35,6 @@ exports.register = async (req, res) => {
     res.status(500).json({ message: "Registration failed" });
   }
 };
-
 // ================= LOGIN =================
 exports.login = async (req, res) => {
   try {

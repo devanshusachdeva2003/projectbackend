@@ -9,13 +9,14 @@ const userSchema = new mongoose.Schema({
 
   // 🔐 SECURITY QUESTION FEATURE
   securityQuestion: {
-    type: String,
-    default: null,
-  },
-  securityAnswer: {
-    type: String,
-    default: null,
-  },
+  type: String,
+  required: true,
+},
+
+securityAnswer: {
+  type: String,
+  required: true,
+},
 
   avatar: {
     type: String,

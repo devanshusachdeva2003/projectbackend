@@ -27,6 +27,17 @@ const blogSchema = new mongoose.Schema(
         createdAt: { type: Date, default: Date.now },
       },
     ],
+
+    // 🔥 ADD THESE TWO
+    scheduledAt: {
+      type: Date,
+      default: null,
+    },
+
+    isPublished: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );
