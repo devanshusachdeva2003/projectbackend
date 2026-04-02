@@ -1,5 +1,3 @@
-// controllers/userController.js
-
 exports.followUser = async (req, res) => {
   try {
     const currentUserId = req.user.id;
@@ -12,19 +10,27 @@ exports.followUser = async (req, res) => {
     const currentUser = await User.findById(currentUserId);
     const targetUser = await User.findById(targetUserId);
 
-    if (!targetUser) {
+    if (!currentUser || !targetUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    if (currentUser.following.includes(targetUserId)) {
+    // ✅ FIX ObjectId comparison
+    const isFollowing = currentUser.following.some(
+      (id) => id.toString() === targetUserId
+    );
+
+    if (isFollowing) {
       return res.status(400).json({ message: "Already following" });
     }
 
-    currentUser.following.push(targetUserId);
-    targetUser.followers.push(currentUserId);
+    // ✅ Better DB update (no duplicates)
+    await User.findByIdAndUpdate(currentUserId, {
+      $addToSet: { following: targetUserId },
+    });
 
-    await currentUser.save();
-    await targetUser.save();
+    await User.findByIdAndUpdate(targetUserId, {
+      $addToSet: { followers: currentUserId },
+    });
 
     res.json({ message: "Followed successfully" });
   } catch (err) {

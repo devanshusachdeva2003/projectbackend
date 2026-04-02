@@ -48,6 +48,9 @@ exports.createBlog = async (req, res) => {
   try {
     const { title, content, topic, scheduledAt } = req.body;
 
+    console.log("📨 Received scheduledAt from frontend:", scheduledAt);
+    console.log("📨 Type:", typeof scheduledAt);
+
     // 🔥 Decide publish type & validate scheduledAt
     let isPublished = true;
     let parsedScheduledAt = null;
@@ -55,13 +58,20 @@ exports.createBlog = async (req, res) => {
     if (scheduledAt) {
       // Convert string to Date object
       const scheduledDate = new Date(scheduledAt);
+      console.log("✅ Parsed scheduledDate:", scheduledDate.toString());
+      console.log("✅ ISO String:", scheduledDate.toISOString());
       
       // Validate date
       if (isNaN(scheduledDate.getTime())) {
+        console.error("❌ Invalid date received:", scheduledAt);
         return res.status(400).json({ message: "Invalid scheduled date. Please provide a valid date and time." });
       }
       
       const now = new Date();
+      console.log("🕐 Current time:", now.toString());
+      console.log("🕐 Scheduled time:", scheduledDate.toString());
+      console.log("🕐 Scheduled > Now?", scheduledDate > now);
+      
       if (scheduledDate <= now) {
         return res.status(400).json({ message: "Scheduled date must be in the future." });
       }

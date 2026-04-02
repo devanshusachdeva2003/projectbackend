@@ -24,7 +24,7 @@ const notificationSchema = new mongoose.Schema(
     // 🔔 Type
     type: {
       type: String,
-      enum: ["like", "comment", "blog", "admin"],
+      enum: ["like", "comment", "blog","follow", "admin"],
       default: "blog",
     },
 

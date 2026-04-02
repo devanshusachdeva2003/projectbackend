@@ -6,16 +6,26 @@ exports.unfollowUser = async (req, res) => {
     const currentUser = await User.findById(currentUserId);
     const targetUser = await User.findById(targetUserId);
 
-    currentUser.following = currentUser.following.filter(
-      (id) => id.toString() !== targetUserId
+    if (!currentUser || !targetUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isFollowing = currentUser.following.some(
+      (id) => id.toString() === targetUserId
     );
 
-    targetUser.followers = targetUser.followers.filter(
-      (id) => id.toString() !== currentUserId
-    );
+    if (!isFollowing) {
+      return res.status(400).json({ message: "You are not following this user" });
+    }
 
-    await currentUser.save();
-    await targetUser.save();
+    // ✅ Efficient removal
+    await User.findByIdAndUpdate(currentUserId, {
+      $pull: { following: targetUserId },
+    });
+
+    await User.findByIdAndUpdate(targetUserId, {
+      $pull: { followers: currentUserId },
+    });
 
     res.json({ message: "Unfollowed successfully" });
   } catch (err) {

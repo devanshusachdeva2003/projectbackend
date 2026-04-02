@@ -1,5 +1,3 @@
-// middleware/followValidation.js
-
 const User = require("../models/User");
 
 exports.validateFollow = async (req, res, next) => {
@@ -14,25 +12,28 @@ exports.validateFollow = async (req, res, next) => {
       });
     }
 
-    // 🔍 Check target user exists
+    // 🔍 Get both users
+    const currentUser = await User.findById(currentUserId);
     const targetUser = await User.findById(targetUserId);
-    if (!targetUser) {
+
+    if (!currentUser || !targetUser) {
       return res.status(404).json({
         message: "User not found",
       });
     }
 
-    // 🔍 Check current user exists
-    const currentUser = await User.findById(currentUserId);
+    // ❌ Already following (safe ObjectId check)
+    const isFollowing = currentUser.following.some(
+      (id) => id.toString() === targetUserId
+    );
 
-    // ❌ Already following
-    if (currentUser.following.includes(targetUserId)) {
+    if (isFollowing) {
       return res.status(400).json({
         message: "Already following",
       });
     }
 
-    // attach users for controller (optimization 🔥)
+    // ✅ Attach to request (avoid re-query in controller)
     req.currentUser = currentUser;
     req.targetUser = targetUser;
 

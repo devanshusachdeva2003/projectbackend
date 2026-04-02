@@ -17,7 +17,6 @@ const blogSchema = new mongoose.Schema(
 
     likes: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
     saves: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
-    followers: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }],
 
     comments: [
       {
