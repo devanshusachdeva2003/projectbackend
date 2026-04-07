@@ -1,11 +1,13 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const crypto = require("crypto");
+const sendVerificationEmail = require("../utils/sendEmail");
 
 // ================= REGISTER =================
 exports.register = async (req, res) => {
   try {
-    const {
+    let {
       name,
       username,
       email,
@@ -14,10 +16,18 @@ exports.register = async (req, res) => {
       securityAnswer,
     } = req.body;
 
+    email = email.toLowerCase();
+
     const exist = await User.findOne({ $or: [{ email }, { username }] });
-    if (exist) return res.status(400).json({ message: "User exists" });
+    if (exist) return res.status(400).json({ message: "User already exists" });
 
     const hash = await bcrypt.hash(password, 10);
+    const hashedAnswer = await bcrypt.hash(
+      securityAnswer.toLowerCase(),
+      10
+    );
+
+    const token = crypto.randomBytes(32).toString("hex");
 
     const user = new User({
       name,
@@ -25,26 +35,46 @@ exports.register = async (req, res) => {
       email,
       password: hash,
       securityQuestion,
-      securityAnswer,
+      securityAnswer: hashedAnswer,
+      verificationToken: token,
+      isVerified: false,
     });
 
     await user.save();
 
-    res.json({ message: "Registered" });
+    // 📧 send verification email
+    await sendVerificationEmail(email, token);
+
+    res.json({
+      message: "Registered successfully. Please verify your email 📧",
+    });
+
   } catch (err) {
+    console.log(err);
     res.status(500).json({ message: "Registration failed" });
   }
 };
+
 // ================= LOGIN =================
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+    email = email.toLowerCase();
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "Invalid" });
+    if (!user)
+      return res.status(400).json({ message: "Invalid email or password" });
+
+    // 🔥 IMPORTANT FIX
+    if (!user.isVerified) {
+      return res.status(403).json({
+        message: "Please verify your email first 📧",
+      });
+    }
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(400).json({ message: "Invalid" });
+    if (!match)
+      return res.status(400).json({ message: "Invalid email or password" });
 
     const token = jwt.sign(
       {
@@ -73,30 +103,64 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: "Login failed" });
   }
 };
-
-// ================= GET SECURITY QUESTION =================
-exports.getSecurityQuestion = async (req, res) => {
+exports.verifyOTP = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, otp } = req.body;
 
     const user = await User.findOne({ email });
 
-    if (!user || !user.securityQuestion) {
-      return res.status(404).json({ message: "User not found" });
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
     }
 
-    res.json({
-      question: user.securityQuestion,
-    });
+    if (user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
+
+    if (user.otpExpires < Date.now()) {
+      return res.status(400).json({ message: "OTP expired" });
+    }
+
+    user.isVerified = true;
+    user.otp = undefined;
+    user.otpExpires = undefined;
+
+    await user.save();
+
+    res.json({ message: "Email verified successfully ✅" });
   } catch (err) {
-    res.status(500).json({ message: "Error fetching question" });
+    res.status(500).json({ message: "OTP verification failed" });
   }
 };
 
-// ================= RESET PASSWORD =================
+
+// ================= VERIFY EMAIL =================
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    const user = await User.findOne({ verificationToken: token });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired token" });
+    }
+
+    user.isVerified = true;
+    user.verificationToken = undefined;
+
+    await user.save();
+
+    res.json({ message: "Email verified successfully ✅" });
+  } catch (err) {
+    res.status(500).json({ message: "Verification failed" });
+  }
+};
+
+// ================= RESET PASSWORD (SECURITY QUESTION) =================
 exports.resetPassword = async (req, res) => {
   try {
-    const { email, answer, newPassword } = req.body;
+    let { email, answer, newPassword } = req.body;
+    email = email.toLowerCase();
 
     const user = await User.findOne({ email });
 
@@ -104,7 +168,6 @@ exports.resetPassword = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // 🔐 compare answer
     const isMatch = await bcrypt.compare(
       answer.toLowerCase(),
       user.securityAnswer
@@ -114,13 +177,12 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ message: "Incorrect answer" });
     }
 
-    // 🔐 update password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
 
     await user.save();
 
-    res.json({ message: "Password reset successful" });
+    res.json({ message: "Password reset successful ✅" });
   } catch (err) {
     res.status(500).json({ message: "Reset failed" });
   }

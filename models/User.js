@@ -9,14 +9,24 @@ const userSchema = new mongoose.Schema({
 
   // 🔐 SECURITY QUESTION FEATURE
   securityQuestion: {
-  type: String,
-  required: true,
-},
+    type: String,
+    required: true,
+  },
 
-securityAnswer: {
-  type: String,
-  required: true,
-},
+  securityAnswer: {
+    type: String,
+    required: true,
+  },
+
+  // 📧 EMAIL VERIFICATION (ADD THIS)
+  verificationToken: {
+    type: String,
+  },
+
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
 
   avatar: {
     type: String,
@@ -50,7 +60,7 @@ securityAnswer: {
   },
 });
 
-// ✅ (optional but recommended)
+// ✅ unique email
 userSchema.index({ email: 1 }, { unique: true });
 
 const User = mongoose.model("User", userSchema);
