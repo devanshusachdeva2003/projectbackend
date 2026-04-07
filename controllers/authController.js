@@ -121,7 +121,15 @@ exports.verifyEmail = async (req, res) => {
     const user = await User.findOne({ verificationToken: token });
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid or expired token" });
+      return res.status(400).html(`
+        <html>
+          <body style="font-family: Arial; text-align: center; padding: 50px;">
+            <h1>❌ Invalid or Expired Token</h1>
+            <p>This verification link is no longer valid.</p>
+            <a href="http://localhost:5173/login" style="padding: 10px 20px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">Go to Login</a>
+          </body>
+        </html>
+      `);
     }
 
     user.isVerified = true;
@@ -129,10 +137,21 @@ exports.verifyEmail = async (req, res) => {
 
     await user.save();
 
-    res.json({ message: "Email verified successfully ✅" });
+    console.log(`✅ Email verified for user: ${user.email}`);
+
+    // ✅ Redirect to login page
+    res.redirect(`http://localhost:5173/login?verified=true&email=${user.email}`);
 
   } catch (err) {
     console.log("VERIFY ERROR:", err);
-    res.status(500).json({ message: "Verification failed" });
+    res.status(500).html(`
+      <html>
+        <body style="font-family: Arial; text-align: center; padding: 50px;">
+          <h1>❌ Verification Failed</h1>
+          <p>An error occurred while verifying your email.</p>
+          <a href="http://localhost:5173/login" style="padding: 10px 20px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px;">Go to Login</a>
+        </body>
+      </html>
+    `);
   }
 };

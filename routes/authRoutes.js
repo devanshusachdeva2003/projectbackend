@@ -17,7 +17,16 @@ router.get("/verify/:token", async (req, res) => {
     });
 
     if (!user) {
-      return res.status(400).send("Invalid or expired token");
+      return res.status(400).send(`
+        <html>
+          <head><title>Verification Failed</title></head>
+          <body style="font-family: Arial; text-align: center; padding: 50px;">
+            <h1 style="color: red;">❌ Invalid or Expired Token</h1>
+            <p>This verification link is no longer valid or has expired.</p>
+            <a href="http://localhost:5173/login" style="padding: 12px 24px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px;">Go to Login</a>
+          </body>
+        </html>
+      `);
     }
 
     user.isVerified = true;
@@ -25,14 +34,23 @@ router.get("/verify/:token", async (req, res) => {
 
     await user.save();
 
-    // ✅ Option 1: simple response
-    res.send("Email verified successfully ✅");
+    console.log(`✅ Email verified for user: ${user.email}`);
 
-    // ✅ Option 2 (recommended for frontend apps)
-    // res.redirect("http://localhost:5173/login");
+    // ✅ Redirect to frontend login page
+    res.redirect(`http://localhost:5173/login?verified=true&email=${encodeURIComponent(user.email)}`);
 
   } catch (err) {
-    res.status(500).send("Server error");
+    console.error("Verify Error:", err);
+    res.status(500).send(`
+      <html>
+        <head><title>Verification Error</title></head>
+        <body style="font-family: Arial; text-align: center; padding: 50px;">
+          <h1 style="color: red;">❌ Verification Failed</h1>
+          <p>An error occurred while verifying your email.</p>
+          <a href="http://localhost:5173/login" style="padding: 12px 24px; background: #4CAF50; color: white; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px;">Go to Login</a>
+        </body>
+      </html>
+    `);
   }
 });
 
