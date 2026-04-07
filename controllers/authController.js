@@ -7,25 +7,16 @@ const sendVerificationEmail = require("../utilis/send");
 // ================= REGISTER =================
 exports.register = async (req, res) => {
   try {
-    let {
-      name,
-      username,
-      email,
-      password,
-      securityQuestion,
-      securityAnswer,
-    } = req.body;
+    let { name, username, email, password } = req.body;
 
     email = email.toLowerCase();
 
     const exist = await User.findOne({ $or: [{ email }, { username }] });
-    if (exist) return res.status(400).json({ message: "User already exists" });
+    if (exist) {
+      return res.status(400).json({ message: "User already exists" });
+    }
 
     const hash = await bcrypt.hash(password, 10);
-    const hashedAnswer = await bcrypt.hash(
-      securityAnswer.toLowerCase(),
-      10
-    );
 
     const token = crypto.randomBytes(32).toString("hex");
 
@@ -34,8 +25,6 @@ exports.register = async (req, res) => {
       username,
       email,
       password: hash,
-      securityQuestion,
-      securityAnswer: hashedAnswer,
       verificationToken: token,
       isVerified: false,
     });
@@ -50,11 +39,10 @@ exports.register = async (req, res) => {
     });
 
   } catch (err) {
-    console.log(err);
+    console.log("REGISTER ERROR:", err); // 👈 VERY IMPORTANT
     res.status(500).json({ message: "Registration failed" });
   }
 };
-
 // ================= LOGIN =================
 exports.login = async (req, res) => {
   try {
