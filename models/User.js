@@ -7,18 +7,7 @@ const userSchema = new mongoose.Schema({
   email: String,
   password: String,
 
-  // 🔐 SECURITY QUESTION FEATURE
-  securityQuestion: {
-    type: String,
-    required: true,
-  },
-
-  securityAnswer: {
-    type: String,
-    required: true,
-  },
-
-  // 📧 EMAIL VERIFICATION (ADD THIS)
+  // � EMAIL VERIFICATION
   verificationToken: {
     type: String,
   },

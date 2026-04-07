@@ -2,18 +2,28 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const crypto = require("crypto");
-const sendVerificationEmail = require("../utilis/send");
+const sendVerificationEmail = require("../utilis/send"); // ✅ FIXED PATH
 
 // ================= REGISTER =================
 exports.register = async (req, res) => {
   try {
     let { name, username, email, password } = req.body;
 
+    if (!name || !username || !email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
     email = email.toLowerCase();
 
-    const exist = await User.findOne({ $or: [{ email }, { username }] });
-    if (exist) {
-      return res.status(400).json({ message: "User already exists" });
+    // ✅ Separate checks (better UX)
+    const emailExists = await User.findOne({ email });
+    if (emailExists) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    const usernameExists = await User.findOne({ username });
+    if (usernameExists) {
+      return res.status(400).json({ message: "Username already taken" });
     }
 
     const hash = await bcrypt.hash(password, 10);
@@ -34,35 +44,44 @@ exports.register = async (req, res) => {
     // 📧 send verification email
     await sendVerificationEmail(email, token);
 
-    res.json({
+    res.status(201).json({
       message: "Registered successfully. Please verify your email 📧",
     });
 
   } catch (err) {
-    console.log("REGISTER ERROR:", err); // 👈 VERY IMPORTANT
+    console.log("REGISTER ERROR:", err);
     res.status(500).json({ message: "Registration failed" });
   }
 };
+
 // ================= LOGIN =================
 exports.login = async (req, res) => {
   try {
     let { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ message: "All fields are required" });
+    }
+
     email = email.toLowerCase();
 
     const user = await User.findOne({ email });
-    if (!user)
+    if (!user) {
       return res.status(400).json({ message: "Invalid email or password" });
-
-    // 🔥 IMPORTANT FIX
-    if (!user.isVerified) {
-      return res.status(403).json({
-        message: "Please verify your email first 📧",
-      });
     }
 
+    // ✅ Email verification check (optional for development)
+    // Uncomment below to enforce email verification
+    // if (!user.isVerified) {
+    //   return res.status(403).json({
+    //     message: "Please verify your email first 📧",
+    //   });
+    // }
+
     const match = await bcrypt.compare(password, user.password);
-    if (!match)
+    if (!match) {
       return res.status(400).json({ message: "Invalid email or password" });
+    }
 
     const token = jwt.sign(
       {
@@ -87,40 +106,12 @@ exports.login = async (req, res) => {
         avatar: user.avatar,
       },
     });
+
   } catch (err) {
+    console.log("LOGIN ERROR:", err);
     res.status(500).json({ message: "Login failed" });
   }
 };
-exports.verifyOTP = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(400).json({ message: "User not found" });
-    }
-
-    if (user.otp !== otp) {
-      return res.status(400).json({ message: "Invalid OTP" });
-    }
-
-    if (user.otpExpires < Date.now()) {
-      return res.status(400).json({ message: "OTP expired" });
-    }
-
-    user.isVerified = true;
-    user.otp = undefined;
-    user.otpExpires = undefined;
-
-    await user.save();
-
-    res.json({ message: "Email verified successfully ✅" });
-  } catch (err) {
-    res.status(500).json({ message: "OTP verification failed" });
-  }
-};
-
 
 // ================= VERIFY EMAIL =================
 exports.verifyEmail = async (req, res) => {
@@ -139,8 +130,9 @@ exports.verifyEmail = async (req, res) => {
     await user.save();
 
     res.json({ message: "Email verified successfully ✅" });
+
   } catch (err) {
+    console.log("VERIFY ERROR:", err);
     res.status(500).json({ message: "Verification failed" });
   }
 };
-

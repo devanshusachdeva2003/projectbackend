@@ -43,7 +43,7 @@ app.use('/health', (req, res) => {
 });
 
 // ============== ROUTES ==============
-app.use("/api", authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/blog", blogRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/users", userRoutes);
