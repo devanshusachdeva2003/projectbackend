@@ -156,34 +156,3 @@ exports.verifyEmail = async (req, res) => {
   }
 };
 
-// ================= RESET PASSWORD (SECURITY QUESTION) =================
-exports.resetPassword = async (req, res) => {
-  try {
-    let { email, answer, newPassword } = req.body;
-    email = email.toLowerCase();
-
-    const user = await User.findOne({ email });
-
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const isMatch = await bcrypt.compare(
-      answer.toLowerCase(),
-      user.securityAnswer
-    );
-
-    if (!isMatch) {
-      return res.status(400).json({ message: "Incorrect answer" });
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-
-    await user.save();
-
-    res.json({ message: "Password reset successful ✅" });
-  } catch (err) {
-    res.status(500).json({ message: "Reset failed" });
-  }
-};
