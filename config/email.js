@@ -8,21 +8,4 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const sendEmail = async (to, subject, html) => {
-  try {
-    const mailOptions = {
-      from: `"Blog App" <${process.env.EMAIL_USER}>`,
-      to,
-      subject,
-      html,
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-
-    console.log("✅ Email sent:", info.messageId);
-  } catch (error) {
-    console.error("❌ Email error:", error);
-  }
-};
-
-module.exports = sendEmail;
+module.exports = transporter;
