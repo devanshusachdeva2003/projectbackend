@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const crypto = require("crypto");
 const sendVerificationEmail = require("../utilis/send"); // ✅ FIXED PATH
+const sendResetEmail = require("../utilis/sendResetEmail");
 
 // ================= REGISTER =================
 exports.register = async (req, res) => {
@@ -153,5 +154,87 @@ exports.verifyEmail = async (req, res) => {
         </body>
       </html>
     `);
+  }
+};
+
+// ================= FORGOT PASSWORD =================
+exports.forgotPassword = async (req, res) => {
+  try {
+    let { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
+    }
+
+    email = email.toLowerCase();
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "User with this email does not exist" });
+    }
+
+    // Generate reset token (valid for 1 hour)
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetTokenExpiry = Date.now() + 3600000; // 1 hour
+
+    user.resetToken = resetToken;
+    user.resetTokenExpiry = resetTokenExpiry;
+    await user.save();
+
+    // Send reset email
+    try {
+      await sendResetEmail(email, resetToken);
+      res.json({
+        message: "Password reset link has been sent to your email 📧",
+      });
+    } catch (emailError) {
+      // If email fails, clear the reset token
+      user.resetToken = null;
+      user.resetTokenExpiry = null;
+      await user.save();
+      return res.status(500).json({ message: "Failed to send reset email" });
+    }
+
+  } catch (err) {
+    console.log("FORGOT PASSWORD ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ================= RESET PASSWORD =================
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ message: "Token and new password are required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+
+    const user = await User.findOne({
+      resetToken: token,
+      resetTokenExpiry: { $gt: Date.now() }, // Check if token is not expired
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired reset token" });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    user.password = hashedPassword;
+    user.resetToken = null;
+    user.resetTokenExpiry = null;
+    await user.save();
+
+    res.json({ message: "Password has been reset successfully! Please login." });
+
+  } catch (err) {
+    console.log("RESET PASSWORD ERROR:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };

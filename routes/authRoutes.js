@@ -54,7 +54,9 @@ router.get("/verify/:token", async (req, res) => {
   }
 });
 
-// 🔥 FORGOT PASSWORD
+// ================= FORGOT PASSWORD =================
+router.post("/forgot-password", authController.forgotPassword);
+router.post("/reset-password", authController.resetPassword);
 
 // ================= CURRENT USER =================
 router.get("/me", auth, async (req, res) => {

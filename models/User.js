@@ -16,7 +16,16 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  // 🔑 PASSWORD RESET
+  resetToken: {
+    type: String,
+    default: null,
+  },
 
+  resetTokenExpiry: {
+    type: Date,
+    default: null,
+  },
   avatar: {
     type: String,
     default: null,
