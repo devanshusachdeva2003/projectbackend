@@ -1,14 +1,10 @@
 const transporter = require("../config/email");
 
-const sendResetEmail = async (email, resetToken) => {
-  // Build the reset link - use FRONTEND_URL from env
-  const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-  const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
-
+const sendResetEmail = async (email, resetCode) => {
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: "🔐 Password Reset Link",
+    subject: "🔐 Password Reset Code",
     html: `
       <html>
         <head>
@@ -42,32 +38,25 @@ const sendResetEmail = async (email, resetToken) => {
               margin-bottom: 30px;
               text-align: center;
             }
-            .button-box {
-              display: inline-block;
+            .code-box {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              padding: 20px;
+              border-radius: 8px;
               margin: 30px 0;
             }
-            .reset-button {
-              display: inline-block;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 15px 40px;
-              text-decoration: none;
-              border-radius: 8px;
+            .reset-code {
+              font-size: 36px;
               font-weight: bold;
-              font-size: 16px;
+              color: white;
+              letter-spacing: 8px;
+              font-family: 'Courier New', monospace;
+              margin: 10px 0;
             }
-            .reset-button:hover {
-              opacity: 0.9;
-            }
-            .link-box {
-              background-color: #f0f8ff;
-              border-left: 4px solid #4CAF50;
-              padding: 15px;
-              margin: 20px 0;
-              border-radius: 4px;
-              color: #333;
+            .code-label {
+              color: rgba(255, 255, 255, 0.9);
               font-size: 12px;
-              word-break: break-all;
+              text-transform: uppercase;
+              letter-spacing: 2px;
             }
             .warning {
               background-color: #fff3cd;
@@ -77,6 +66,19 @@ const sendResetEmail = async (email, resetToken) => {
               border-radius: 4px;
               color: #856404;
               font-size: 14px;
+            }
+            .instructions {
+              background-color: #f0f8ff;
+              border-left: 4px solid #4CAF50;
+              padding: 15px;
+              margin: 20px 0;
+              border-radius: 4px;
+              color: #333;
+              text-align: left;
+              font-size: 14px;
+            }
+            .instructions li {
+              margin: 8px 0;
             }
             .footer {
               text-align: center;
@@ -96,33 +98,36 @@ const sendResetEmail = async (email, resetToken) => {
         <body>
           <div class="container">
             <div class="header">
-              <h1>🔐 Password Reset Link</h1>
+              <h1>🔐 Password Reset Code</h1>
             </div>
 
             <div class="content">
               <p>Hello,</p>
-              <p>We received a request to reset your password. Click the button below to set a new password.</p>
+              <p>We received a request to reset your password. Use the code below to reset your password.</p>
             </div>
 
-            <div class="button-box">
-              <a href="${resetLink}" class="reset-button">Reset Password</a>
+            <div class="code-box">
+              <div class="code-label">Your Reset Code</div>
+              <div class="reset-code">${resetCode}</div>
             </div>
 
-            <p style="color: #666; font-size: 14px; margin: 20px 0;">
-              Or copy and paste this link in your browser:
-            </p>
-
-            <div class="link-box">
-              <strong>Link:</strong><br>
-              ${resetLink}
+            <div class="instructions">
+              <strong>📝 How to reset your password:</strong>
+              <ol>
+                <li>Go to the password reset page</li>
+                <li>Enter your email address</li>
+                <li>Enter the code above</li>
+                <li>Enter your new password</li>
+                <li>Click "Reset Password"</li>
+              </ol>
             </div>
 
             <div class="warning">
-              ⚠️ <strong>This link will expire in 1 hour.</strong> If you don't use it within this time, you'll need to request a new link.
+              ⚠️ <strong>This code will expire in 15 minutes.</strong> If you don't use it within this time, you'll need to request a new code.
             </div>
 
             <p style="color: #666; font-size: 14px;">
-              If you didn't request a password reset, please ignore this email and do not click the link. Your password will remain unchanged.
+              If you didn't request a password reset, please ignore this email. Your password will remain unchanged.
             </p>
 
             <div class="divider"></div>
@@ -130,7 +135,7 @@ const sendResetEmail = async (email, resetToken) => {
             <div class="footer">
               <p>This is an automated email. Please do not reply to this email.</p>
               <p>&copy; 2026 Blog App. All rights reserved.</p>
-              <p>Security Tip: Never share this link with anyone.</p>
+              <p>Security Tip: Never share this code with anyone.</p>
             </div>
           </div>
         </body>
