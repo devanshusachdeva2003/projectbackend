@@ -190,12 +190,25 @@ exports.forgotPassword = async (req, res) => {
         message: "Password reset code has been sent to your email 📧",
       });
     } catch (emailError) {
-      console.error("📧 Email Error:", emailError);
+      console.error("📧 Email Error Details:", emailError.message);
+      console.error("📧 Stack:", emailError.stack);
       // If email fails, clear the reset code
       user.resetToken = null;
       user.resetTokenExpiry = null;
       await user.save();
-      return res.status(500).json({ message: "Failed to send reset email. Please check your email address." });
+      
+      // Check if it's a Gmail authentication error
+      if (emailError.message.includes("Invalid login") || emailError.message.includes("Bad credentials")) {
+        return res.status(500).json({ 
+          message: "Email configuration error: Invalid credentials. Please contact admin.",
+          details: emailError.message 
+        });
+      }
+      
+      return res.status(500).json({ 
+        message: "Failed to send reset email",
+        details: emailError.message 
+      });
     }
 
   } catch (err) {
