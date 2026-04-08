@@ -173,26 +173,29 @@ exports.forgotPassword = async (req, res) => {
       return res.status(400).json({ message: "User with this email does not exist" });
     }
 
-    // Generate reset token (valid for 1 hour)
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    const resetTokenExpiry = Date.now() + 3600000; // 1 hour
+    // Generate 6-digit random code (valid for 15 minutes)
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetTokenExpiry = Date.now() + 900000; // 15 minutes
 
-    user.resetToken = resetToken;
+    user.resetToken = resetCode; // Store code in resetToken field
     user.resetTokenExpiry = resetTokenExpiry;
     await user.save();
 
+    console.log(`🔐 Reset Code Generated for ${email}: ${resetCode}`); // Debug log
+
     // Send reset email
     try {
-      await sendResetEmail(email, resetToken);
+      await sendResetEmail(email, resetCode);
       res.json({
-        message: "Password reset link has been sent to your email 📧",
+        message: "Password reset code has been sent to your email 📧",
       });
     } catch (emailError) {
-      // If email fails, clear the reset token
+      console.error("📧 Email Error:", emailError);
+      // If email fails, clear the reset code
       user.resetToken = null;
       user.resetTokenExpiry = null;
       await user.save();
-      return res.status(500).json({ message: "Failed to send reset email" });
+      return res.status(500).json({ message: "Failed to send reset email. Please check your email address." });
     }
 
   } catch (err) {
@@ -204,10 +207,10 @@ exports.forgotPassword = async (req, res) => {
 // ================= RESET PASSWORD =================
 exports.resetPassword = async (req, res) => {
   try {
-    const { token, newPassword } = req.body;
+    const { email, code, newPassword } = req.body;
 
-    if (!token || !newPassword) {
-      return res.status(400).json({ message: "Token and new password are required" });
+    if (!email || !code || !newPassword) {
+      return res.status(400).json({ message: "Email, code, and new password are required" });
     }
 
     if (newPassword.length < 6) {
@@ -215,12 +218,13 @@ exports.resetPassword = async (req, res) => {
     }
 
     const user = await User.findOne({
-      resetToken: token,
+      email: email.toLowerCase(),
+      resetToken: code,
       resetTokenExpiry: { $gt: Date.now() }, // Check if token is not expired
     });
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid or expired reset token" });
+      return res.status(400).json({ message: "Invalid or expired reset code" });
     }
 
     // Hash the new password
@@ -230,6 +234,8 @@ exports.resetPassword = async (req, res) => {
     user.resetToken = null;
     user.resetTokenExpiry = null;
     await user.save();
+
+    console.log(`✅ Password reset successfully for ${email}`); // Debug log
 
     res.json({ message: "Password has been reset successfully! Please login." });
 
