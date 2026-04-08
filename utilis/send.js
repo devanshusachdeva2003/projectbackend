@@ -60,6 +60,17 @@ const sendVerificationEmail = async (email, token) => {
     return info;
   } catch (error) {
     console.error("❌ Email sending failed:", error.message);
+    console.error("Error Code:", error.code);
+    
+    // Provide helpful error messages
+    if (error.code === "EDANGEROUS") {
+      console.error("⚠️  Gmail rejected the email for security reasons. Check your Gmail settings.");
+    } else if (error.code === "EAUTH") {
+      console.error("⚠️  Authentication failed. Wrong EMAIL_USER or EMAIL_PASS in .env file.");
+    } else if (error.response) {
+      console.error("SMTP Response:", error.response);
+    }
+    
     throw error;
   }
 };

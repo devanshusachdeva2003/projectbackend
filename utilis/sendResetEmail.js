@@ -144,10 +144,23 @@ const sendResetEmail = async (email, resetCode) => {
   };
 
   try {
-    await transporter.sendMail(mailOptions);
-    console.log(`✅ Reset code sent to ${email}`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ Reset code sent to ${email}. Message ID: ${info.messageId}`);
+    return info;
   } catch (error) {
-    console.error("❌ Failed to send reset email:", error);
+    console.error("❌ Failed to send reset email to:", email);
+    console.error("Error Code:", error.code);
+    console.error("Error Message:", error.message);
+    
+    // Provide helpful error messages
+    if (error.code === "EDANGEROUS") {
+      console.error("⚠️  Gmail rejected the email for security reasons. Check if LESS SECURE APP ACCESS is disabled.");
+    } else if (error.code === "EAUTH") {
+      console.error("⚠️  Authentication failed. Wrong EMAIL_USER or EMAIL_PASS in .env file.");
+    } else if (error.response) {
+      console.error("SMTP Response:", error.response);
+    }
+    
     throw error;
   }
 };
