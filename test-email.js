@@ -1,5 +1,10 @@
 require("dotenv").config();
+const dns = require("dns");
 const nodemailer = require("nodemailer");
+
+// Force IPv4-only DNS resolution (CRITICAL for Render)
+dns.setDefaultResultOrder("ipv4first");
+console.log("✅ DNS configured for IPv4-only\n");
 
 console.log("🧪 Testing Email Configuration...\n");
 
@@ -7,6 +12,7 @@ console.log("🧪 Testing Email Configuration...\n");
 console.log("📋 Environment Variables:");
 console.log("EMAIL_USER:", process.env.EMAIL_USER ? "✅ Set" : "❌ Missing");
 console.log("EMAIL_PASS:", process.env.EMAIL_PASS ? "✅ Set" : "❌ Missing");
+console.log("NODE_ENV:", process.env.NODE_ENV || "development");
 console.log("");
 
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
@@ -15,13 +21,24 @@ if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
   process.exit(1);
 }
 
-// Create transporter
+// Create transporter with same config as production
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465, // SSL port
+  secure: true,
+  requireTLS: true,
+  
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
+
+  // Render-specific settings
+  family: 4, // IPv4 only
+  connectionTimeout: 20000,
+  socketTimeout: 20000,
+  maxConnections: 1,
+  maxMessages: 10,
 });
 
 // Test connection
@@ -35,15 +52,24 @@ transporter.verify((error, success) => {
     console.error("");
 
     // Helpful troubleshooting
-    if (error.message.includes("Invalid login")) {
-      console.log("💡 SOLUTION:");
-      console.log("   1. You're using a personal Gmail account");
+    if (error.code === "EAUTH" || error.message.includes("Invalid login")) {
+      console.log("💡 SOLUTION - Authentication Error:");
+      console.log("   1. You must use a Gmail App Password (not regular password)");
       console.log("   2. Go to https://myaccount.google.com/apppasswords");
-      console.log("   3. Create an 'App Password' for 'Mail' and 'Windows Computer'");
-      console.log("   4. Copy the 16-character password to EMAIL_PASS in .env");
-      console.log("   5. Make sure 2FA (Two-Factor Authentication) is enabled on Gmail\n");
+      console.log("   3. Make sure 2FA is enabled on your Google account");
+      console.log("   4. Generate a new app password for 'Mail'");
+      console.log("   5. Copy the 16-character password to EMAIL_PASS in .env");
+      console.log("   6. Save and try again\n");
+    } else if (error.code === "ENETUNREACH") {
+      console.log("💡 SOLUTION - Network Error (IPv6 Blocked):");
+      console.log("   This is a platform issue, IPv4 should be forced");
+      console.log("   Error: Render is blocking IPv6 connections");
+      console.log("   Check if dns.setDefaultResultOrder('ipv4first') is set\n");
     } else if (error.message.includes("connect")) {
-      console.log("💡 SOLUTION: Check your internet connection\n");
+      console.log("💡 SOLUTION - Connection Error:");
+      console.log("   1. Check your internet connection");
+      console.log("   2. Try restarting the application");
+      console.log("   3. Verify EMAIL_USER and EMAIL_PASS are correct\n");
     }
 
     process.exit(1);
