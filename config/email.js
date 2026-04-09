@@ -10,11 +10,11 @@ if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
   console.error("❌ ERROR: EMAIL_USER or EMAIL_PASS not configured!");
 }
 
-// Gmail SMTP configuration - Port 465 with SSL (more reliable for Render)
+// Gmail SMTP configuration - Port 2525 alternative (works better on Render with Render IPv6 blocking)
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 465, // SSL port (more reliable than 587 on Render)
-  secure: true, // Use SSL
+  port: 2525, // Alternative SMTP port - works when 465/587 blocked by IPv6
+  secure: false, // Don't use SSL with 2525
   requireTLS: true,
   
   auth: {
@@ -26,8 +26,8 @@ const transporter = nodemailer.createTransport({
   // IPv4 already forced in server.js via dns.setDefaultResultOrder("ipv4first")
   family: 4,
   
-  connectionTimeout: 20000, // 20 seconds
-  socketTimeout: 20000,
+  connectionTimeout: 30000, // Longer timeout for alternative port
+  socketTimeout: 30000,
   
   // Connection pool
   maxConnections: 1,
