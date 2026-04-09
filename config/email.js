@@ -1,53 +1,83 @@
 const nodemailer = require("nodemailer");
+const dns = require("dns");
+
+// Force IPv4-only DNS resolution for Render
+dns.setDefaultResultOrder("ipv4first");
 
 // Log environment variables (masked)
 console.log("📧 Email Configuration:");
 console.log(`  - EMAIL_USER: ${process.env.EMAIL_USER ? process.env.EMAIL_USER.substring(0, 5) + "***" : "NOT SET"}`);
 console.log(`  - EMAIL_PASS: ${process.env.EMAIL_PASS ? "SET" : "NOT SET"}`);
+console.log(`  - NODE_ENV: ${process.env.NODE_ENV}`);
 
 if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
   console.error("❌ ERROR: EMAIL_USER or EMAIL_PASS not configured!");
 }
 
-// Gmail SMTP configuration - Optimized for Render (IPv4 only)
+// Gmail SMTP configuration - Aggressive IPv4-only for Render
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 587, // TLS port (not 465)
-  secure: false, // Use STARTTLS
+  port: 587, // TLS port
+  secure: false, // Use STARTTLS (not SSL)
   requireTLS: true,
   
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // App Password, not regular password
+    pass: process.env.EMAIL_PASS, // Must be Gmail App Password (16 chars)
   },
 
-  // Render-specific settings
-  family: 4, // Force IPv4 only (Render blocks IPv6)
-  connectionTimeout: 10000,
-  socketTimeout: 10000,
-  maxConnections: 1,
-  maxMessages: 5,
-  rateDelta: 2000,
-  rateLimit: 3,
+  // ⚠️  CRITICAL SETTINGS FOR RENDER
+  // Force IPv4 only - Render blocks IPv6
+  family: 4,
   
-  // TLS settings
-  tls: {
-    rejectUnauthorized: false, // Required for some hosting
-    minVersion: "TLSv1.2",
+  // Socket connection settings
+  connectionUrl: undefined,
+  connectionTimeout: 15000, // 15 seconds
+  socketTimeout: 15000,
+  
+  // DNS resolution
+  dnsOptions: {
+    "family": 4, // IPv4 only
   },
+  
+  // Connection pool
+  pool: {
+    maxConnections: 1,
+    maxMessages: 5,
+    rateDelta: 1000,
+    rateLimit: 5,
+  },
+  
+  // TLS/SSL settings
+  tls: {
+    ciphers: "SSLv3",
+    rejectUnauthorized: false,
+  },
+  
+  // Logging
+  logger: true,
+  debug: process.env.NODE_ENV === "development",
 });
 
 // Verify transporter configuration
 transporter.verify((error, success) => {
   if (error) {
-    console.error("❌ Email transporter verification failed:", error.message);
-    console.error("⚠️  Troubleshooting tips:");
-    console.error("   1. Ensure EMAIL_USER and EMAIL_PASS are set in .env");
-    console.error("   2. For Gmail: Generate an App Password (not regular password)");
-    console.error("   3. Enable 2-Step Verification on your Gmail account first");
-    console.error("   4. Go to: https://myaccount.google.com/apppasswords");
+    console.error("❌ Email transporter FAILED verification:");
+    console.error("   Error:", error.message);
+    console.error("   Code:", error.code);
+    
+    if (error.code === "ENETUNREACH") {
+      console.error("   📌 ENETUNREACH = Network unreachable");
+      console.error("   ⚠️  Render is blocking IPv6 connections to Gmail SMTP");
+      console.error("   Solution: Ensure family: 4 is set (IPv4 only)");
+    } else if (error.code === "EAUTH" || error.message.includes("Invalid login")) {
+      console.error("   ❌ Authentication failed - Check Gmail App Password");
+      console.error("   💡 Make sure you're using a 16-character Google App Password");
+    } else if (error.code === "ETIMEDOUT") {
+      console.error("   ⏱️  Connection timeout - Try different port or email service");
+    }
   } else {
-    console.log("✅ Email transporter verified and ready to send emails");
+    console.log("✅ Email transporter verified and ready!");
   }
 });
 
