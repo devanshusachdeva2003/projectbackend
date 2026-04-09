@@ -65,7 +65,6 @@ exports.register = async (req, res) => {
     res.status(500).json({ message: "Registration failed" });
   }
 };
-};
 
 // ================= LOGIN =================
 exports.login = async (req, res) => {
