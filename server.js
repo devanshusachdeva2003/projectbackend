@@ -2,12 +2,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-const dns = require("dns");
 require("dotenv").config();
-
-// ⚠️ CRITICAL: Force IPv4-only DNS for Render (must be before any other imports)
-dns.setDefaultResultOrder("ipv4first");
-console.log("✅ DNS configured for IPv4-only resolution");
 
 // 🔥 ADD THESE
 const cron = require("node-cron");
