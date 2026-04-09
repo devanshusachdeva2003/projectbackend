@@ -151,12 +151,18 @@ const sendResetEmail = async (email, resetCode) => {
     console.error("❌ Failed to send reset email to:", email);
     console.error("Error Code:", error.code);
     console.error("Error Message:", error.message);
+    console.error("Full Error:", JSON.stringify(error, null, 2));
     
-    // Provide helpful error messages
+    // Provide helpful error messages for debugging
     if (error.code === "EDANGEROUS") {
-      console.error("⚠️  Gmail rejected the email for security reasons. Check if LESS SECURE APP ACCESS is disabled.");
-    } else if (error.code === "EAUTH") {
-      console.error("⚠️  Authentication failed. Wrong EMAIL_USER or EMAIL_PASS in .env file.");
+      console.error("⚠️  Gmail rejected the email - Security issue");
+    } else if (error.code === "EAUTH" || error.message.includes("Invalid login")) {
+      console.error("⚠️  Authentication failed - Check EMAIL_PASS is a valid Gmail App Password");
+      console.error("   Gmail App Passwords are 16 characters: xxxx xxxx xxxx xxxx");
+    } else if (error.code === "ENETUNREACH") {
+      console.error("⚠️  Network unreachable - IPv6 issue, trying alternative ports...");
+    } else if (error.code === "ETIMEDOUT") {
+      console.error("⚠️  Connection timeout - SMTP server not responding");
     } else if (error.response) {
       console.error("SMTP Response:", error.response);
     }

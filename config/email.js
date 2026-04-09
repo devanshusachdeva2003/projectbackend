@@ -1,8 +1,4 @@
 const nodemailer = require("nodemailer");
-const dns = require("dns");
-
-// Force IPv4-only DNS resolution for Render
-dns.setDefaultResultOrder("ipv4first");
 
 // Log environment variables (masked)
 console.log("📧 Email Configuration:");
@@ -14,11 +10,11 @@ if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
   console.error("❌ ERROR: EMAIL_USER or EMAIL_PASS not configured!");
 }
 
-// Gmail SMTP configuration - Aggressive IPv4-only for Render
+// Gmail SMTP configuration - Port 465 with SSL (more reliable for Render)
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 587, // TLS port
-  secure: false, // Use STARTTLS (not SSL)
+  port: 465, // SSL port (more reliable than 587 on Render)
+  secure: true, // Use SSL
   requireTLS: true,
   
   auth: {
@@ -27,30 +23,20 @@ const transporter = nodemailer.createTransport({
   },
 
   // ⚠️  CRITICAL SETTINGS FOR RENDER
-  // Force IPv4 only - Render blocks IPv6
+  // IPv4 already forced in server.js via dns.setDefaultResultOrder("ipv4first")
   family: 4,
   
-  // Socket connection settings
-  connectionUrl: undefined,
-  connectionTimeout: 15000, // 15 seconds
-  socketTimeout: 15000,
-  
-  // DNS resolution
-  dnsOptions: {
-    "family": 4, // IPv4 only
-  },
+  connectionTimeout: 20000, // 20 seconds
+  socketTimeout: 20000,
   
   // Connection pool
-  pool: {
-    maxConnections: 1,
-    maxMessages: 5,
-    rateDelta: 1000,
-    rateLimit: 5,
-  },
+  maxConnections: 1,
+  maxMessages: 10,
+  rateDelta: 500,
+  rateLimit: 10,
   
   // TLS/SSL settings
   tls: {
-    ciphers: "SSLv3",
     rejectUnauthorized: false,
   },
   
@@ -67,14 +53,13 @@ transporter.verify((error, success) => {
     console.error("   Code:", error.code);
     
     if (error.code === "ENETUNREACH") {
-      console.error("   📌 ENETUNREACH = Network unreachable");
-      console.error("   ⚠️  Render is blocking IPv6 connections to Gmail SMTP");
-      console.error("   Solution: Ensure family: 4 is set (IPv4 only)");
+      console.error("   📌 ENETUNREACH = Network unreachable (IPv6 issue)");
+      console.error("   ⚠️  Render is blocking IPv6 - IPv4 should be forced in server.js");
     } else if (error.code === "EAUTH" || error.message.includes("Invalid login")) {
       console.error("   ❌ Authentication failed - Check Gmail App Password");
-      console.error("   💡 Make sure you're using a 16-character Google App Password");
+      console.error("   💡 Gmail App Password must be exactly 16 characters: xxxx xxxx xxxx xxxx");
     } else if (error.code === "ETIMEDOUT") {
-      console.error("   ⏱️  Connection timeout - Try different port or email service");
+      console.error("   ⏱️  Connection timeout - Gmail SMTP not responding");
     }
   } else {
     console.log("✅ Email transporter verified and ready!");
