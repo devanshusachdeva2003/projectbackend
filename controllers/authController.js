@@ -28,7 +28,6 @@ exports.register = async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 10);
-
     const token = crypto.randomBytes(32).toString("hex");
 
     const user = new User({
@@ -40,19 +39,32 @@ exports.register = async (req, res) => {
       isVerified: false,
     });
 
-    await user.save();
-
-    // 📧 send verification email
-    await sendVerificationEmail(email, token);
-
-    res.status(201).json({
-      message: "Registered successfully. Please verify your email 📧",
-    });
+    // ✅ Try to send email BEFORE saving user
+    try {
+      await sendVerificationEmail(email, token);
+      console.log(`✅ Verification email sent to ${email}`);
+      
+      // Save user only after email is sent successfully
+      await user.save();
+      
+      res.status(201).json({
+        message: "Registered successfully. Please verify your email 📧",
+      });
+    } catch (emailError) {
+      console.error("📧 Failed to send verification email:", emailError.message);
+      
+      // Don't save user if email fails
+      return res.status(500).json({ 
+        message: "Failed to send verification email. Please check your email configuration or try again later.",
+        error: emailError.message 
+      });
+    }
 
   } catch (err) {
-    console.log("REGISTER ERROR:", err);
+    console.error("REGISTER ERROR:", err);
     res.status(500).json({ message: "Registration failed" });
   }
+};
 };
 
 // ================= LOGIN =================
