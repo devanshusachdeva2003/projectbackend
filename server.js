@@ -8,6 +8,9 @@ require("dotenv").config();
 const cron = require("node-cron");
 const Blog = require("./models/Blog");
 
+// ============== DATABASE ==============
+const mongoose = require("mongoose");
+
 // ============== ROUTES ==============
 const authRoutes = require("./routes/authRoutes");
 const blogRoutes = require("./routes/blogRoutes");
@@ -49,25 +52,66 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/notifications", notificationRoutes);
 
-// ============== 🔥 CRON JOB (AUTO PUBLISH) ==============
-cron.schedule("* * * * *", async () => {
-  try {
-    const now = new Date();
+// ============== 🔥 CRON JOB (AUTO PUBLISH) - Every 5 minutes ==============
+let cronJob = null;
 
-    const posts = await Blog.find({
-      isPublished: false,
-      scheduledAt: { $lte: now },
-    });
+const startCronJob = () => {
+  cronJob = cron.schedule("*/5 * * * *", async () => {
+    try {
+      // Check if database is connected
+      if (mongoose.connection.readyState !== 1) {
+        console.log("⚠️  Database not connected, skipping cron job");
+        return;
+      }
 
-    for (let post of posts) {
-      post.isPublished = true;
-      await post.save();
-      console.log("✅ Auto Published:", post.title);
+      const now = new Date();
+
+      const posts = await Blog.find({
+        isPublished: false,
+        scheduledAt: { $lte: now },
+      }).maxTimeMS(5000); // 5 second timeout per query
+
+      if (posts.length > 0) {
+        for (let post of posts) {
+          post.isPublished = true;
+          await post.save();
+          console.log("✅ Auto Published:", post.title);
+        }
+      }
+    } catch (err) {
+      console.error("❌ Cron error:", err.message);
     }
+  });
+
+  console.log("✅ Cron job started (runs every 5 minutes)");
+};
+
+// ============== DATABASE INITIALIZATION ==============
+const connectDB = async () => {
+  try {
+    const mongoOptions = {
+      maxPoolSize: 3,
+      minPoolSize: 1,
+      maxIdleTimeMS: 45000,
+      socketTimeoutMS: 45000,
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 10000,
+      retryWrites: true,
+      retryReads: true,
+      family: 4,
+    };
+
+    await mongoose.connect(process.env.MONGO_URI, mongoOptions);
+    console.log("✅ MongoDB connected successfully");
+    
+    // Start cron job only after successful DB connection
+    startCronJob();
   } catch (err) {
-    console.log("❌ Cron error:", err.message);
+    console.error("❌ MongoDB connection error:", err.message);
+    console.error("Retrying in 5 seconds...");
+    setTimeout(connectDB, 5000);
   }
-});
+};
 
 // ============== 404 ERROR ==============
 app.use((req, res) => {
@@ -82,6 +126,20 @@ app.use((err, req, res, next) => {
 // ============== SERVER START ==============
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log(`✅ Server running on http://localhost:${PORT}`);
+  
+  // Connect to database
+  await connectDB();
+});
+
+// ============== GRACEFUL SHUTDOWN ==============
+process.on("SIGTERM", () => {
+  console.log("SIGTERM received, shutting down gracefully");
+  server.close(() => {
+    console.log("Server closed");
+    if (cronJob) cronJob.stop();
+    mongoose.connection.close();
+    process.exit(0);
+  });
 });

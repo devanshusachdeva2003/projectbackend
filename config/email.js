@@ -6,15 +6,18 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
-  // Add these options to improve reliability
-  pool: {
-    maxConnections: 5,
-    maxMessages: 100,
-  },
-  rateDelta: 1000,
-  rateLimit: 5,
-  secure: true,
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // Use TLS
   requireTLS: true,
+  connectionTimeout: 10000, // 10 seconds
+  socketTimeout: 10000, // 10 seconds
+  pool: {
+    maxConnections: 1,
+    maxMessages: 5,
+    rateDelta: 2000,
+    rateLimit: 3,
+  },
 });
 
 // Verify transporter configuration
