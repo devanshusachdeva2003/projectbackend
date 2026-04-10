@@ -46,13 +46,16 @@ exports.getBlogs = async (req, res) => {
 // CREATE BLOG
 exports.createBlog = async (req, res) => {
   try {
-    const { title, content, topic, scheduledAt } = req.body;
+    const { title, content, topic, scheduledAt, isDraft } = req.body;
 
     console.log("📨 Received scheduledAt from frontend:", scheduledAt);
     console.log("📨 Type:", typeof scheduledAt);
+    console.log("📨 isDraft:", isDraft);
 
     // 🔥 Decide publish type & validate scheduledAt
-    let isPublished = true;
+    // isDraft may come as string when sent via FormData
+    const draftFlag = isDraft === true || isDraft === 'true' || isDraft === '1';
+    let isPublished = !draftFlag;
     let parsedScheduledAt = null;
 
     if (scheduledAt) {
@@ -128,6 +131,15 @@ exports.updateBlog = async (req, res) => {
     blog.title = req.body.title;
     blog.content = req.body.content;
     blog.topic = req.body.topic;
+
+    // ✅ Handle scheduled date updates and draft flag
+    const isDraftBody = req.body.isDraft === true || req.body.isDraft === 'true' || req.body.isDraft === '1';
+
+    if (isDraftBody) {
+      blog.isPublished = false;
+      // if saving as draft, clear scheduledAt unless explicitly provided
+      if (!req.body.scheduledAt) blog.scheduledAt = null;
+    }
 
     // ✅ Handle scheduled date updates
     if (req.body.scheduledAt) {
