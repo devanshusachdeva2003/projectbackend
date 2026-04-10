@@ -15,13 +15,19 @@ exports.getAllBlogs = async (req, res) => {
 // GET SINGLE BLOG
 exports.getBlogById = async (req, res) => {
   try {
-    const post = await Blog.findOne({
-  _id: req.params.id,
-  isPublished: true,
-});
+    const id = req.params.id;
+
+    // Validate ObjectId to avoid accidental route collisions (e.g. '/me')
+    const mongoose = require("mongoose");
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid blog id" });
+    }
+
+    const post = await Blog.findOne({ _id: id, isPublished: true });
     if (!post) return res.status(404).json({ message: "Blog not found" });
     res.json(post);
   } catch (err) {
+    console.error("getBlogById error:", err);
     res.status(500).json({ message: "Failed to fetch blog" });
   }
 };
