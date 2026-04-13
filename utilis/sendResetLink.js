@@ -1,16 +1,6 @@
 const transporter = require("../config/email");
 
-// Optional SendGrid fallback if SMTP is blocked by host (e.g., Render)
-let sgMail = null;
-if (process.env.SENDGRID_API_KEY) {
-  try {
-    sgMail = require("@sendgrid/mail");
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  } catch (e) {
-    console.warn("SendGrid not available; ensure @sendgrid/mail is installed if you plan to use it.", e.message);
-    sgMail = null;
-  }
-}
+// Using SMTP transporter only (Gmail). No SendGrid fallback.
 
 const sendResetLink = async (email, link) => {
   const html = `
@@ -44,27 +34,7 @@ const sendResetLink = async (email, link) => {
     return info;
   } catch (error) {
     console.error("❌ SMTP send failed:", error && error.message ? error.message : String(error));
-
-    // If SendGrid configured, attempt fallback
-    if (sgMail) {
-      try {
-        const msg = {
-          to: email,
-          from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
-          subject: "🔐 Password Reset",
-          html,
-        };
-        const res = await sgMail.send(msg);
-        return { provider: "sendgrid", response: res };
-      } catch (sgErr) {
-        console.error("❌ SendGrid fallback failed:", sgErr && sgErr.message ? sgErr.message : String(sgErr));
-        // throw aggregated error
-        const aggregate = new Error("Both SMTP and SendGrid sends failed");
-        aggregate.details = { smtp: error, sendgrid: sgErr };
-        throw aggregate;
-      }
-    }
-
+    // Only Gmail/SMTP is supported in this deployment. Surface the SMTP error.
     throw error;
   }
 };
