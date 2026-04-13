@@ -209,8 +209,15 @@ exports.forgotPassword = async (req, res) => {
     user.resetTokenExpiry = resetTokenExpiry;
     await user.save();
 
-    // Build frontend reset link
-    const frontendBase = process.env.FRONTEND_URL || (process.env.BASE_URL ? process.env.BASE_URL : "http://localhost:5173");
+    // Build frontend reset link.
+    // Preference order: explicit FRONTEND_URL env, BASE_URL env, request origin, request host, then localhost fallback.
+    const frontendBase =
+      process.env.FRONTEND_URL ||
+      process.env.BASE_URL ||
+      req.get("origin") ||
+      `${req.protocol}://${req.get("host")}` ||
+      "http://localhost:5173";
+
     const resetLink = `${frontendBase.replace(/\/$/,"")}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
 
     // Send reset link
