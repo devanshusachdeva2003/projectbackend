@@ -123,18 +123,24 @@ app.use((err, req, res, next) => {
 // ============== SERVER START ==============
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, async () => {
-  
-  
-  // Connect to database
-  await connectDB();
+// Connect to database independent of the `listen` callback
+// This is critical for Vercel since it might bypass `app.listen`
+connectDB();
+
+const server = app.listen(PORT, () => {
+  console.log(`Server dynamically running on ${PORT}`);
 });
 
 // ============== GRACEFUL SHUTDOWN ==============
 process.on("SIGTERM", () => {
   server.close(() => {
     if (cronJob) cronJob.stop();
-    mongoose.connection.close();
+    if (mongoose.connection.readyState === 1) {
+      mongoose.connection.close();
+    }
     process.exit(0);
   });
 });
+
+// Export the Express API so Vercel can run it as a Serverless Function
+module.exports = app;
