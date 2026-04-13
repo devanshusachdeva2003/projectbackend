@@ -205,11 +205,14 @@ exports.forgotPassword = async (req, res) => {
 
     // Send reset email
     try {
-      await sendResetEmail(email, resetCode);
-      res.json({
+      const info = await sendResetEmail(email, resetCode);
+      console.log("📧 Reset email send info:", info && info.response ? info.response : info);
+      const payload = {
         message: "Password reset code has been sent to your email 📧",
         code: resetCode // Dev only - remove in production
-      });
+      };
+      if (process.env.NODE_ENV !== "production") payload.sendInfo = info;
+      res.json(payload);
     } catch (emailError) {
       console.error("📧 Email Service Unavailable:", emailError);
       // Email service failed but reset code is already saved in database
