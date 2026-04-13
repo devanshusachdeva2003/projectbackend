@@ -44,19 +44,32 @@ exports.register = async (req, res) => {
       await sendVerificationEmail(email, token);
       user.isVerified = false;
     } catch (emailError) {
-      console.error("📧 Email service unavailable:", emailError.message);
+      console.error("📧 Email service unavailable:", emailError);
       // Auto-verify user if email service fails (e.g., on Render with Gmail SMTP)
       user.isVerified = true;
+      // Attach debug info for development diagnostics only
+      if (process.env.NODE_ENV !== "production") {
+        user._emailDebug = {
+          message: emailError && emailError.message ? emailError.message : String(emailError),
+          code: emailError && emailError.code ? emailError.code : undefined,
+        };
+      }
     }
     
     // Save user regardless of email success/failure
     await user.save();
     
-    res.status(201).json({
-      message: user.isVerified 
-        ? "Registered successfully! You can now login." 
-        : "Registered successfully. Please verify your email 📧",
-    });
+    const baseMessage = user.isVerified
+      ? "Registered successfully! You can now login."
+      : "Registered successfully. Please verify your email 📧";
+
+    const responsePayload = { message: baseMessage };
+    if (process.env.NODE_ENV !== "production" && user._emailDebug) {
+      responsePayload.emailDebug = user._emailDebug;
+      responsePayload.emailAutoVerified = user.isVerified;
+    }
+
+    res.status(201).json(responsePayload);
 
   } catch (err) {
     console.error("REGISTER ERROR:", err);
@@ -198,14 +211,18 @@ exports.forgotPassword = async (req, res) => {
         code: resetCode // Dev only - remove in production
       });
     } catch (emailError) {
-      console.error("📧 Email Service Unavailable:", emailError.message);
+      console.error("📧 Email Service Unavailable:", emailError);
       // Email service failed but reset code is already saved in database
       // Return success so frontend can prompt for code
-      res.status(200).json({ 
+      const payload = {
         message: "Password reset code generated. Check your email or contact support. Code: " + resetCode,
         code: resetCode, // Return code for testing/offline use
-        emailFailed: true 
-      });
+        emailFailed: true,
+      };
+      if (process.env.NODE_ENV !== "production") {
+        payload.emailError = emailError && emailError.message ? emailError.message : String(emailError);
+      }
+      res.status(200).json(payload);
     }
 
   } catch (err) {

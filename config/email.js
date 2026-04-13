@@ -3,8 +3,9 @@ const nodemailer = require("nodemailer");
 // Explicit Gmail SMTP configuration with better logging for diagnostics
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
+  port: 587,
+  // Use STARTTLS on port 587 (secure:false + requireTLS:true)
+  secure: false,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
@@ -12,7 +13,10 @@ const transporter = nodemailer.createTransport({
   tls: {
     // Allow self-signed / corporate proxies; keep false in production if possible
     rejectUnauthorized: false,
+    // Enforce TLS upgrade for STARTTLS
+    // Note: nodemailer will upgrade the connection when server supports STARTTLS
   },
+  requireTLS: true,
   logger: true,
   debug: true,
   // Timeouts and IPv4 preference to avoid some hosting platform issues

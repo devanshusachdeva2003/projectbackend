@@ -2,7 +2,7 @@ const transporter = require("../config/email");
 
 const sendResetEmail = async (email, resetCode) => {
   const mailOptions = {
-    from: process.env.EMAIL_USER,
+    from: `"Blog App" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: "🔐 Password Reset Code",
     html: `
