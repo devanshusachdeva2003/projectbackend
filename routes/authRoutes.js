@@ -110,6 +110,43 @@ router.post("/test-email", async (req, res) => {
   }
 });
 
+// ================= DEBUG: SEND RESET (secure) =================
+// Use this endpoint to trigger a reset email from the deployed server and
+// return detailed transporter info for troubleshooting. Requires header
+// `x-debug-secret` to match `process.env.DEBUG_SECRET` to avoid public abuse.
+router.post("/debug/send-reset", async (req, res) => {
+  try {
+    const secret = req.headers["x-debug-secret"] || req.headers["X-Debug-Secret"];
+    if (!process.env.DEBUG_SECRET || !secret || secret !== process.env.DEBUG_SECRET) {
+      return res.status(403).json({ message: "Forbidden - invalid debug secret" });
+    }
+
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const sendResetEmail = require("../utilis/sendResetEmail");
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    try {
+      const info = await sendResetEmail(email, resetCode);
+      return res.json({
+        message: "Debug reset sent",
+        code: resetCode,
+        info,
+      });
+    } catch (err) {
+      console.error("DEBUG send-reset error:", err);
+      return res.status(500).json({
+        message: "Debug send failed",
+        error: err && err.message ? err.message : String(err),
+      });
+    }
+  } catch (err) {
+    console.error("Debug endpoint error:", err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
 // ================= CURRENT USER =================
 router.get("/me", auth, async (req, res) => {
   try {
