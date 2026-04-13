@@ -185,6 +185,7 @@ exports.verifyEmail = async (req, res) => {
 
 // ================= FORGOT PASSWORD =================
 exports.forgotPassword = async (req, res) => {
+  
   try {
     let { email } = req.body;
 
