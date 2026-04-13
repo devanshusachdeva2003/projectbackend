@@ -73,6 +73,12 @@ exports.register = async (req, res) => {
 
   } catch (err) {
     console.error("REGISTER ERROR:", err);
+    // Handle duplicate key (race condition) for better UX
+    if (err && (err.code === 11000 || (err.name === 'MongoServerError' && err.code === 11000))) {
+      const value = err.keyValue && (err.keyValue.email || err.keyValue.username) ? (err.keyValue.email || err.keyValue.username) : undefined;
+      const field = err.keyValue && Object.keys(err.keyValue)[0] ? Object.keys(err.keyValue)[0] : 'field';
+      return res.status(400).json({ message: `${field} already registered${value ? `: ${value}` : ''}` });
+    }
     res.status(500).json({ message: "Registration failed" });
   }
 };
@@ -213,7 +219,13 @@ exports.forgotPassword = async (req, res) => {
       const info = await sendResetLink(email, resetLink);
       console.log("📧 Reset link send info:", info && info.response ? info.response : info);
       const payload = { message: "Password reset link has been emailed. Check your inbox." };
-      if (process.env.NODE_ENV !== "production") payload.debug = { resetLink, sendInfo: info };
+      // If operator enabled, return resetLink in response (temporary, for debugging)
+      if (process.env.RETURN_RESET_LINK === "true") {
+        payload.resetLink = resetLink;
+        payload.sendInfo = info;
+      } else if (process.env.NODE_ENV !== "production") {
+        payload.debug = { resetLink, sendInfo: info };
+      }
       return res.json(payload);
     } catch (emailError) {
       console.error("📧 Email Service Unavailable:", emailError);
@@ -222,7 +234,11 @@ exports.forgotPassword = async (req, res) => {
         message: "Password reset requested. Email delivery failed — contact support.",
         emailFailed: true,
       };
-      if (process.env.NODE_ENV !== "production") {
+      // Optionally return the reset link for production debugging
+      if (process.env.RETURN_RESET_LINK === "true") {
+        payload.resetLink = resetLink;
+        payload.error = emailError && emailError.message ? emailError.message : String(emailError);
+      } else if (process.env.NODE_ENV !== "production") {
         payload.debug = { resetLink, error: emailError && emailError.message ? emailError.message : String(emailError) };
       }
       return res.status(200).json(payload);

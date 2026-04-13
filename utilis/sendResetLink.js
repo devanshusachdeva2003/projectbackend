@@ -10,6 +10,7 @@ if (process.env.SENDGRID_API_KEY) {
     console.warn("SendGrid not available; ensure @sendgrid/mail is installed if you plan to use it.", e.message);
     sgMail = null;
   }
+}
 
 const sendResetLink = async (email, link) => {
   const html = `
