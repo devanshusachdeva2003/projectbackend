@@ -60,7 +60,6 @@ const startCronJob = () => {
     try {
       // Check if database is connected
       if (mongoose.connection.readyState !== 1) {
-        console.log("⚠️  Database not connected, skipping cron job");
         return;
       }
 
@@ -75,7 +74,6 @@ const startCronJob = () => {
         for (let post of posts) {
           post.isPublished = true;
           await post.save();
-          console.log("✅ Auto Published:", post.title);
         }
       }
     } catch (err) {
@@ -83,7 +81,7 @@ const startCronJob = () => {
     }
   });
 
-  console.log("✅ Cron job started (runs every 5 minutes)");
+  
 };
 
 // ============== DATABASE INITIALIZATION ==============
@@ -102,7 +100,6 @@ const connectDB = async () => {
     };
 
     await mongoose.connect(process.env.MONGO_URI, mongoOptions);
-    console.log("✅ MongoDB connected successfully");
     
     // Start cron job only after successful DB connection
     startCronJob();
@@ -127,7 +124,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 
 const server = app.listen(PORT, async () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  
   
   // Connect to database
   await connectDB();
@@ -135,9 +132,7 @@ const server = app.listen(PORT, async () => {
 
 // ============== GRACEFUL SHUTDOWN ==============
 process.on("SIGTERM", () => {
-  console.log("SIGTERM received, shutting down gracefully");
   server.close(() => {
-    console.log("Server closed");
     if (cronJob) cronJob.stop();
     mongoose.connection.close();
     process.exit(0);

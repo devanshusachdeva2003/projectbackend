@@ -42,13 +42,11 @@ exports.register = async (req, res) => {
     // ✅ Try to send email, but allow registration anyway
     try {
       await sendVerificationEmail(email, token);
-      console.log(`✅ Verification email sent to ${email}`);
       user.isVerified = false;
     } catch (emailError) {
       console.error("📧 Email service unavailable:", emailError.message);
       // Auto-verify user if email service fails (e.g., on Render with Gmail SMTP)
       user.isVerified = true;
-      console.log(`⚠️ Email service failed, auto-verifying user: ${email}`);
     }
     
     // Save user regardless of email success/failure
@@ -120,7 +118,6 @@ exports.login = async (req, res) => {
     });
 
   } catch (err) {
-    console.log("LOGIN ERROR:", err);
     res.status(500).json({ message: "Login failed" });
   }
 };
@@ -149,13 +146,12 @@ exports.verifyEmail = async (req, res) => {
 
     await user.save();
 
-    console.log(`✅ Email verified for user: ${user.email}`);
+    
 
     // ✅ Redirect to login page
     res.redirect(`http://localhost:5173/login?verified=true&email=${user.email}`);
 
   } catch (err) {
-    console.log("VERIFY ERROR:", err);
     res.status(500).html(`
       <html>
         <body style="font-family: Arial; text-align: center; padding: 50px;">
@@ -192,7 +188,7 @@ exports.forgotPassword = async (req, res) => {
     user.resetTokenExpiry = resetTokenExpiry;
     await user.save();
 
-    console.log(`🔐 Reset Code Generated for ${email}: ${resetCode}`); // Debug log
+    
 
     // Send reset email
     try {
@@ -213,7 +209,6 @@ exports.forgotPassword = async (req, res) => {
     }
 
   } catch (err) {
-    console.log("FORGOT PASSWORD ERROR:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -249,12 +244,11 @@ exports.resetPassword = async (req, res) => {
     user.resetTokenExpiry = null;
     await user.save();
 
-    console.log(`✅ Password reset successfully for ${email}`); // Debug log
+    
 
     res.json({ message: "Password has been reset successfully! Please login." });
 
   } catch (err) {
-    console.log("RESET PASSWORD ERROR:", err);
     res.status(500).json({ message: "Server error" });
   }
 };

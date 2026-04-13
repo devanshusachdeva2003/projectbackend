@@ -34,7 +34,7 @@ router.get("/verify/:token", async (req, res) => {
 
     await user.save();
 
-    console.log(`✅ Email verified for user: ${user.email}`);
+    
 
     // ✅ Redirect to frontend login page
     res.redirect(`http://localhost:5173/login?verified=true&email=${encodeURIComponent(user.email)}`);
@@ -96,9 +96,8 @@ router.post("/test-email", async (req, res) => {
           error: err.message 
         });
       }
-      console.log("✅ Test email sent:", info.response);
       res.json({ 
-        message: "✅ Test email sent successfully! Check your inbox.",
+        message: "Test email sent successfully",
         info: info.response 
       });
     });
