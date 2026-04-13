@@ -22,6 +22,12 @@ const userSchema = new mongoose.Schema({
     default: null,
   },
 
+  // Hashed token for password reset (server stores hash of token sent via email)
+  resetTokenHash: {
+    type: String,
+    default: null,
+  },
+
   resetTokenExpiry: {
     type: Date,
     default: null,

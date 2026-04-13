@@ -3,6 +3,7 @@ const authController = require("../controllers/authController");
 const auth = require("../middleware/auth");
 const User = require("../models/User");
 
+const crypto = require("crypto");
 const router = express.Router();
 
 // ================= AUTH =================
@@ -124,22 +125,29 @@ router.post("/debug/send-reset", async (req, res) => {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: "Email is required" });
 
-    const sendResetEmail = require("../utilis/sendResetEmail");
-    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-
     try {
-      const info = await sendResetEmail(email, resetCode);
-      return res.json({
-        message: "Debug reset sent",
-        code: resetCode,
-        info,
-      });
+      const user = await User.findOne({ email: email.toLowerCase() });
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      // Generate token and store hash
+      const token = crypto.randomBytes(32).toString("hex");
+      const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+      const resetTokenExpiry = Date.now() + 15 * 60 * 1000;
+
+      user.resetTokenHash = tokenHash;
+      user.resetTokenExpiry = resetTokenExpiry;
+      await user.save();
+
+      const frontendBase = process.env.FRONTEND_URL || (process.env.BASE_URL ? process.env.BASE_URL : "http://localhost:5173");
+      const resetLink = `${frontendBase.replace(/\/$/,"")}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+
+      const sendResetLink = require("../utilis/sendResetLink");
+      const info = await sendResetLink(email, resetLink);
+
+      return res.json({ message: "Debug reset sent", resetLink, info });
     } catch (err) {
       console.error("DEBUG send-reset error:", err);
-      return res.status(500).json({
-        message: "Debug send failed",
-        error: err && err.message ? err.message : String(err),
-      });
+      return res.status(500).json({ message: "Debug send failed", error: err && err.message ? err.message : String(err) });
     }
   } catch (err) {
     console.error("Debug endpoint error:", err);

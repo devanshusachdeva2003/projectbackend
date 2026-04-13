@@ -193,39 +193,39 @@ exports.forgotPassword = async (req, res) => {
       return res.status(400).json({ message: "User with this email does not exist" });
     }
 
-    // Generate 6-digit random code (valid for 15 minutes)
-    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const resetTokenExpiry = Date.now() + 900000; // 15 minutes
+    // Generate secure token (valid for 15 minutes)
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const resetTokenExpiry = Date.now() + 15 * 60 * 1000; // 15 minutes
 
-    user.resetToken = resetCode; // Store code in resetToken field
+    // Store hash and expiry on user
+    user.resetTokenHash = tokenHash;
     user.resetTokenExpiry = resetTokenExpiry;
     await user.save();
 
-    
+    // Build frontend reset link
+    const frontendBase = process.env.FRONTEND_URL || (process.env.BASE_URL ? process.env.BASE_URL : "http://localhost:5173");
+    const resetLink = `${frontendBase.replace(/\/$/,"")}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
 
-    // Send reset email
+    // Send reset link
     try {
-      const info = await sendResetEmail(email, resetCode);
-      console.log("📧 Reset email send info:", info && info.response ? info.response : info);
-      const payload = {
-        message: "Password reset code has been sent to your email 📧",
-        code: resetCode // Dev only - remove in production
-      };
-      if (process.env.NODE_ENV !== "production") payload.sendInfo = info;
-      res.json(payload);
+      const sendResetLink = require("../utilis/sendResetLink");
+      const info = await sendResetLink(email, resetLink);
+      console.log("📧 Reset link send info:", info && info.response ? info.response : info);
+      const payload = { message: "Password reset link has been emailed. Check your inbox." };
+      if (process.env.NODE_ENV !== "production") payload.debug = { resetLink, sendInfo: info };
+      return res.json(payload);
     } catch (emailError) {
       console.error("📧 Email Service Unavailable:", emailError);
-      // Email service failed but reset code is already saved in database
-      // Return success so frontend can prompt for code
+      // Email failed — keep token stored so user can use link if you can surface it in dev
       const payload = {
-        message: "Password reset code generated. Check your email or contact support. Code: " + resetCode,
-        code: resetCode, // Return code for testing/offline use
+        message: "Password reset requested. Email delivery failed — contact support.",
         emailFailed: true,
       };
       if (process.env.NODE_ENV !== "production") {
-        payload.emailError = emailError && emailError.message ? emailError.message : String(emailError);
+        payload.debug = { resetLink, error: emailError && emailError.message ? emailError.message : String(emailError) };
       }
-      res.status(200).json(payload);
+      return res.status(200).json(payload);
     }
 
   } catch (err) {
@@ -236,35 +236,35 @@ exports.forgotPassword = async (req, res) => {
 // ================= RESET PASSWORD =================
 exports.resetPassword = async (req, res) => {
   try {
-    const { email, code, newPassword } = req.body;
+    const { email, token, newPassword } = req.body;
 
-    if (!email || !code || !newPassword) {
-      return res.status(400).json({ message: "Email, code, and new password are required" });
+    if (!email || !token || !newPassword) {
+      return res.status(400).json({ message: "Email, token, and new password are required" });
     }
 
     if (newPassword.length < 6) {
       return res.status(400).json({ message: "Password must be at least 6 characters" });
     }
 
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+
     const user = await User.findOne({
       email: email.toLowerCase(),
-      resetToken: code,
-      resetTokenExpiry: { $gt: Date.now() }, // Check if token is not expired
+      resetTokenHash: tokenHash,
+      resetTokenExpiry: { $gt: Date.now() },
     });
 
     if (!user) {
-      return res.status(400).json({ message: "Invalid or expired reset code" });
+      return res.status(400).json({ message: "Invalid or expired reset token" });
     }
 
     // Hash the new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
     user.password = hashedPassword;
-    user.resetToken = null;
+    user.resetTokenHash = null;
     user.resetTokenExpiry = null;
     await user.save();
-
-    
 
     res.json({ message: "Password has been reset successfully! Please login." });
 
