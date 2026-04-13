@@ -1,39 +1,36 @@
 const nodemailer = require("nodemailer");
+require("dotenv").config();
 
-// Explicit Gmail SMTP configuration with better logging for diagnostics
+// Simple, easy-to-configure SMTP transporter.
+// Configure via env vars: SMTP_HOST, SMTP_PORT, SMTP_SECURE, EMAIL_USER, EMAIL_PASS
+const host = process.env.SMTP_HOST || "smtp.gmail.com";
+const port = parseInt(process.env.SMTP_PORT || (process.env.SMTP_SECURE === "true" ? "465" : "587"));
+const secure = process.env.SMTP_SECURE === "true" || port === 465;
+
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  // Use STARTTLS on port 587 (secure:false + requireTLS:true)
-  secure: false,
+  host,
+  port,
+  secure,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
   tls: {
-    // Allow self-signed / corporate proxies; keep false in production if possible
-    rejectUnauthorized: false,
-    // Enforce TLS upgrade for STARTTLS
-    // Note: nodemailer will upgrade the connection when server supports STARTTLS
+    rejectUnauthorized: process.env.SMTP_REJECT_UNAUTHORIZED !== "false",
   },
-  requireTLS: true,
-  logger: true,
-  debug: true,
-  // Timeouts and IPv4 preference to avoid some hosting platform issues
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  socketTimeout: 20000,
+  // Reasonable defaults; override with env if needed
+  connectionTimeout: parseInt(process.env.SMTP_CONNECTION_TIMEOUT || "20000"),
+  greetingTimeout: parseInt(process.env.SMTP_GREETING_TIMEOUT || "20000"),
+  socketTimeout: parseInt(process.env.SMTP_SOCKET_TIMEOUT || "20000"),
   family: 4,
 });
 
-// Verify transporter and print detailed info on success/failure
-transporter.verify((error, success) => {
+// Lightweight verification log
+transporter.verify((error) => {
   if (error) {
-    console.error("❌ Email verification failed:", error && error.message ? error.message : error);
-    if (error && error.code) console.error("Error code:", error.code);
-    if (error && error.response) console.error("SMTP response:", error.response);
+    console.error("SMTP verify failed:", error && error.message ? error.message : error);
   } else {
-    console.log("✅ SMTP transporter is ready to send messages");
+    console.log("SMTP transporter ready");
   }
 });
 
